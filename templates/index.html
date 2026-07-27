@@ -1,0 +1,1074 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>竞品礼盒优惠对比 · 在线生成器</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root {
+  --bg:#f5f5f7; --ink:#1d1d1f; --ink-2:#424245; --ink-3:#86868b;
+  --line:rgba(0,0,0,0.08); --line-strong:rgba(0,0,0,0.14);
+  --glass:rgba(255,255,255,0.62); --glass-soft:rgba(255,255,255,0.45);
+  --radius:20px; --radius-sm:13px;
+  --shadow: 0 4px 28px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --green:#34c759; --orange:#ff9500; --red:#ff3b30;
+}
+* { box-sizing: border-box; }
+html,body { height:100%; }
+body { margin:0; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display","SF Pro Text","PingFang SC","Microsoft YaHei", sans-serif;
+       background: var(--bg); color: var(--ink); -webkit-font-smoothing: antialiased; }
+body::before {
+  content:""; position:fixed; inset:0; z-index:-1;
+  background:
+    radial-gradient(58vw 58vw at 10% 6%, rgba(176,186,206,.30), transparent 60%),
+    radial-gradient(50vw 50vw at 90% 14%, rgba(206,200,224,.26), transparent 60%),
+    radial-gradient(54vw 54vw at 72% 96%, rgba(188,202,212,.24), transparent 60%),
+    var(--bg);
+}
+header { position:sticky; top:0; z-index:20; display:flex; align-items:center; justify-content:space-between;
+         padding:14px 28px; backdrop-filter: saturate(180%) blur(22px); -webkit-backdrop-filter: saturate(180%) blur(22px);
+         background: rgba(255,255,255,.7); border-bottom: 1px solid var(--line); }
+header h1 { font-size:19px; margin:0; font-weight:600; letter-spacing:-0.015em; }
+.btn { cursor:pointer; border:none; border-radius:980px; padding:10px 22px; font-size:13px; font-weight:500;
+       transition:.2s ease; font-family:inherit; letter-spacing:-0.01em; }
+.btn-primary { background:var(--ink); color:#fff; }
+.btn-primary:hover { background:#000; transform: translateY(-1px); }
+.btn-primary:disabled { background: #c7c7cc; cursor:not-allowed; transform:none; }
+.btn-ghost { background:rgba(0,0,0,.06); color:var(--ink); }
+.btn-ghost:hover { background:rgba(0,0,0,.11); }
+.btn-link { background:transparent; color:var(--ink-2); padding:6px 8px; }
+.btn-link:hover { color:var(--ink); }
+.btn-sm { padding:6px 14px; font-size:12px; }
+.btn-danger { background:rgba(0,0,0,.05); color:var(--ink-2); }
+.btn-danger:hover { background:rgba(0,0,0,.1); }
+.btn-big { padding:14px 36px; font-size:15px; font-weight:600; }
+main { max-width: 1080px; margin: 32px auto; padding: 0 20px 90px; }
+.hidden { display: none !important; }
+
+/* ========== Page 1 (上传页) ========== */
+#page1 .topbar { display:flex; gap:12px; align-items:center; justify-content:space-between;
+                  margin-bottom:24px; flex-wrap:wrap; }
+#page1 .hero { text-align:center; margin-bottom: 36px; }
+#page1 .hero h2 { font-size: 38px; font-weight: 700; margin: 0 0 12px; letter-spacing: -0.03em; }
+#page1 .hero p { color: var(--ink-3); font-size: 15px; margin: 0; }
+
+.dropzone {
+  background: var(--glass); backdrop-filter: saturate(180%) blur(22px);
+  -webkit-backdrop-filter: saturate(180%) blur(22px);
+  border: 1.5px dashed var(--line-strong);
+  border-radius: var(--radius);
+  padding: 56px 24px; text-align:center; cursor:pointer;
+  transition: .25s ease;
+}
+.dropzone:hover, .dropzone.drag { border-color: var(--ink); background: rgba(255,255,255,.82); }
+.dropzone h3 { margin: 0 0 10px; font-size: 18px; font-weight: 600; }
+.dropzone p { color: var(--ink-3); font-size: 13.5px; margin: 6px 0; }
+.dropzone .pickfiles { display:inline-block; margin-top: 14px; padding: 9px 22px; border-radius: 980px;
+                       background: var(--ink); color: #fff; font-size: 13px; font-weight: 500; cursor: pointer; }
+
+.batch {
+  background: var(--glass); backdrop-filter: saturate(180%) blur(22px);
+  -webkit-backdrop-filter: saturate(180%) blur(22px);
+  border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 22px 24px; margin-bottom: 16px;
+  box-shadow: var(--shadow);
+}
+.batch-head { display:flex; align-items:center; gap:14px; margin-bottom: 18px; flex-wrap: wrap; }
+.batch-head .b-title { font-weight: 600; font-size: 15px; }
+.batch-head .b-date label { display: inline-block; margin-right: 8px; color: var(--ink-3); font-size: 12.5px; }
+.batch-head .b-date input { padding: 8px 12px; border: 1px solid var(--line); border-radius: var(--radius-sm);
+                              background: rgba(255,255,255,.55); font-size: 13px; font-family: inherit; }
+.batch-head .b-actions { margin-left: auto; display:flex; gap:8px; }
+
+.thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; }
+.thumb { background: rgba(255,255,255,.55); border: 1px solid var(--line);
+         border-radius: var(--radius-sm); padding: 8px; position: relative;
+         display:flex; flex-direction:column; gap:6px; }
+.thumb img { width:100%; aspect-ratio: 1; object-fit: contain; border-radius: 10px; background:#fff; }
+.thumb .th-date { font-size: 11.5px; color: var(--ink-3); }
+.thumb .th-date input { width: 100%; padding: 5px 8px; border: 1px solid var(--line); border-radius: 8px;
+                        background: rgba(255,255,255,.85); font-size: 12px; font-family: inherit; }
+.thumb .th-del { position: absolute; top: 10px; right: 10px; width: 26px; height: 26px; border-radius: 50%;
+                 background: rgba(0,0,0,.65); color: #fff; border: none; cursor: pointer; font-size: 14px; line-height: 1; }
+.thumb .th-del:hover { background: rgba(0,0,0,.85); }
+
+.batch-add { margin-bottom: 24px; }
+
+.global-actions { display:flex; gap:12px; align-items:center; justify-content:center;
+                   padding-top: 20px; }
+
+/* ========== Page 2 (结果页) ========== */
+#page2 .head { display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+#page2 .head h2 { font-size: 26px; font-weight: 700; margin:0; letter-spacing: -0.02em; }
+
+.r-card {
+  background: var(--glass); backdrop-filter: saturate(180%) blur(22px);
+  -webkit-backdrop-filter: saturate(180%) blur(22px);
+  border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 22px 24px; margin-bottom: 16px; box-shadow: var(--shadow);
+  display:grid; grid-template-columns: 200px 1fr; gap: 22px;
+}
+.r-card img { width: 200px; aspect-ratio: 1; object-fit: contain; border-radius: var(--radius-sm); background: #fff; }
+.r-card .r-meta { display:flex; flex-direction: column; gap: 10px; }
+.r-card .r-line { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+.r-card .r-line label { min-width: 76px; color: var(--ink-3); font-size: 12.5px; }
+.r-card .r-line input, .r-card .r-line textarea, .r-card .r-line select {
+  flex: 1; min-width: 100px; padding: 8px 12px; border: 1px solid var(--line);
+  border-radius: var(--radius-sm); font-size: 13px; font-family: inherit;
+  background: rgba(255,255,255,.65); color: var(--ink);
+}
+.r-card .r-line textarea { resize: vertical; min-height: 36px; }
+.r-card .gift-edit { display:grid; grid-template-columns: 1.5fr 0.7fr 0.7fr 0.9fr auto; gap: 6px; align-items: center; }
+.r-card .gift-edit input { padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; font-size: 12.5px; background: rgba(255,255,255,.65); }
+.r-card .gifts-area { background: rgba(255,255,255,.4); border-radius: var(--radius-sm); padding: 10px; }
+.r-card .gifts-area .gh { font-size: 12px; color: var(--ink-3); margin-bottom: 6px; }
+.r-card .bton { padding: 6px 14px; font-size: 12px; }
+.r-card .needs { background: rgba(255,210,0,.18); color: #6b4a00; padding: 8px 12px; border-radius: 10px;
+                  font-size: 12.5px; margin-top: 4px; }
+
+/* 商家货补 / 商家券 / 购物金 通用编辑行 */
+.benefit-edit { display: grid; grid-template-columns: 1.2fr 0.6fr 0.7fr 0.7fr 0.5fr auto; gap: 5px; align-items: center; margin-bottom: 5px; }
+.benefit-edit input, .benefit-edit select { padding: 5px 8px; border: 1px solid var(--line); border-radius: 7px; font-size: 11.5px; background: rgba(255,255,255,.65); font-family: inherit; }
+.benefit-edit .cb-label { font-size: 11px; color: var(--ink-3); white-space: nowrap; display: flex; align-items: center; gap: 2px; }
+.benefit-edit .cb-label input[type=checkbox] { margin: 0; flex: none; width: 14px; height: 14px; }
+
+/* 校验摘要卡（单图内联） */
+.item-summary { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12.5px;
+                padding: 10px 14px; background: rgba(255,255,255,.35); border-radius: 10px;
+                border: 1px solid var(--line); margin-top: 4px; }
+.item-summary .is-label { color: var(--ink-3); }
+.item-summary .is-val { font-weight: 600; }
+.item-summary .is-diff-ok { color: var(--green); }
+.item-summary .is-diff-warn { color: var(--orange); }
+.item-summary .is-diff-err { color: var(--red); }
+
+/* 整体汇总卡 */
+.summary-card { background: var(--glass); backdrop-filter: saturate(180%) blur(22px);
+  -webkit-backdrop-filter: saturate(180%) blur(22px); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 22px 24px; margin-bottom: 16px; box-shadow: var(--shadow); }
+.summary-card h3 { margin: 0 0 16px; font-size: 17px; font-weight: 600; }
+.summary-card table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.summary-card th { text-align: left; font-weight: 500; padding: 7px 8px;
+                   border-bottom: 1px solid var(--line); color: var(--ink-2); background: rgba(0,0,0,.03); }
+.summary-card td { padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.summary-card .sm-num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 500; }
+.summary-card .diff-ok { color: var(--green); }
+.summary-card .diff-warn { color: var(--orange); }
+.summary-card .diff-err { color: var(--red); }
+.summary-card .diff-neutral { color: var(--ink-3); }
+
+.dl-bar { position: sticky; bottom: 24px; display:flex; justify-content:center; margin-top: 22px;
+           z-index: 10; }
+.dl-bar .inner { background: rgba(29,29,31,.92); backdrop-filter: blur(20px); padding: 12px 18px;
+                  border-radius: 980px; display:flex; gap: 12px; align-items: center; box-shadow: 0 10px 34px rgba(0,0,0,.32); }
+.dl-bar .inner .btn-primary { background: #fff; color: var(--ink); }
+.dl-bar .inner .btn-primary:hover { background: #ececec; }
+.dl-bar .inner .label { color: rgba(255,255,255,.7); font-size: 13px; padding: 0 6px; }
+
+/* helpers */
+.toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
+         background: rgba(29,29,31,.92); backdrop-filter: blur(20px); color: #fff;
+         padding: 12px 22px; border-radius: 980px; font-size: 13px; opacity: 0; transition: .3s; z-index: 40;
+         box-shadow: 0 10px 34px rgba(0,0,0,.32); }
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* Loader */
+.overlay { position: fixed; inset: 0; background: rgba(0,0,0,.35); backdrop-filter: blur(8px);
+            display: none; align-items: center; justify-content: center; z-index: 60; }
+.overlay.show { display: flex; }
+.overlay .panel { background: rgba(255,255,255,.9); backdrop-filter: blur(34px);
+                  border-radius: 20px; padding: 30px 38px; text-align: center; min-width: 320px; box-shadow: 0 24px 70px rgba(0,0,0,.28); }
+.overlay .spinner { width: 36px; height: 36px; border: 3px solid rgba(0,0,0,.1); border-top-color: var(--ink);
+                    border-radius: 50%; margin: 0 auto 14px; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.overlay .msg { font-size: 14px; color: var(--ink); }
+.overlay .sub { font-size: 12px; color: var(--ink-3); margin-top: 4px; }
+
+/* Help modal */
+.modal-mask { position: fixed; inset: 0; background: rgba(0,0,0,.35); backdrop-filter: blur(8px);
+              display: none; z-index: 50; align-items: center; justify-content: center; padding: 20px; }
+.modal-mask.show { display: flex; }
+.modal { background: rgba(255,255,255,.9); backdrop-filter: blur(34px); -webkit-backdrop-filter: blur(34px);
+         border: 1px solid rgba(255,255,255,.5); border-radius: 28px; max-width: 720px; width: 100%;
+         max-height: 86vh; overflow-y: auto; padding: 32px 36px; box-shadow: 0 24px 70px rgba(0,0,0,.28); }
+.modal h2 { margin: 0 0 14px; color: var(--ink); font-size: 23px; font-weight: 600; letter-spacing: -.02em; }
+.modal h3 { color: var(--ink); font-size: 15px; margin: 22px 0 8px; font-weight: 600; }
+.modal p, .modal li { font-size: 13.5px; line-height: 1.75; color: #333337; }
+.modal code { background: rgba(0,0,0,.06); padding: 2px 7px; border-radius: 7px; font-size: 12px; }
+.modal .close-x { float: right; cursor: pointer; font-size: 24px; color: var(--ink-3); line-height: 1; font-weight: 300; border: none; background: transparent; }
+.modal .close-x:hover { color: var(--ink); }
+
+@media (max-width: 760px) {
+  .r-card { grid-template-columns: 1fr; }
+  .r-card img { width: 100%; max-width: 280px; margin: 0 auto; }
+  #page1 .hero h2 { font-size: 30px; }
+  .benefit-edit { grid-template-columns: 1fr 1fr 1fr 1fr; }
+  .summary-card table { font-size: 11px; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>竞品礼盒优惠对比 · 在线生成器</h1>
+  <div style="display:flex; gap:10px;">
+    <button class="btn btn-ghost btn-sm" id="helpBtn">使用说明书</button>
+    <button class="btn btn-link btn-sm" id="goUploadBtn" style="display:none;">重新上传</button>
+  </div>
+</header>
+
+<!-- ========== Page 1: 上传页 ========== -->
+<main id="page1">
+  <div class="hero">
+    <h2>上传主图，选个日期，<br>剩下交给工具自动跑</h2>
+    <p>支持从剪贴板粘贴、拖入文件、或批量选择。运行后自动 OCR 识别主品、赠品与优惠。</p>
+  </div>
+
+  <div class="dropzone" id="dropzone" tabindex="0">
+    <input type="file" id="filePicker" multiple accept="image/*" style="display:none;">
+    <h3>把主图拖进来 · 粘贴 · 或选文件</h3>
+    <p>支持同一批次（同年/同活动）批量上传，再统一选日期；也可个别图改日期。</p>
+    <span class="pickfiles">选择文件</span>
+  </div>
+
+  <div style="height: 18px;"></div>
+  <div id="batches"></div>
+  <div class="batch-add">
+    <button class="btn btn-ghost" id="addBatchBtn">+ 添加另一个批次</button>
+  </div>
+
+  <div class="global-actions">
+    <button class="btn btn-primary btn-big" id="runBtn" disabled>运行并识别 →</button>
+  </div>
+</main>
+
+<!-- ========== Page 2: 结果页 ========== -->
+<main id="page2" class="hidden">
+  <div class="head">
+    <div>
+      <h2>已自动识别</h2>
+      <p style="color:var(--ink-3); margin: 6px 0 0; font-size: 14px;">以下字段由 OCR + 解析得到，<b style="color:var(--ink-2);">可点击修改</b>。商家货补/商家券/购物金请在下方<b style="color:var(--ink-2);">手动补充</b>，主图未标注且未补则不导出。</p>
+    </div>
+  </div>
+  <div id="r-list"></div>
+
+  <!-- 汇总卡片 -->
+  <div class="summary-card" id="summaryCard" style="display:none;">
+    <h3>校验比对 · 分项合计</h3>
+    <div style="overflow-x:auto;">
+      <table id="summaryTable"><thead></thead><tbody></tbody></table>
+    </div>
+    <div style="margin-top:14px; font-size:12.5px; color:var(--ink-3);">
+      <b>口径：</b>计入折扣合计 = 货补(计入) + 商家券(计入) + 平台券；宣称总减免为手动填入或 OCR 初值；差异 = 宣称 − 合计。<br>
+      购物金<b>完全不计入折扣率</b>（规则10）。平台券若主品价不足门槛，按比例折算（规则12）。
+    </div>
+  </div>
+
+  <div class="batch" style="margin-top:18px;">
+    <div class="b-title" style="margin-bottom:8px;">官方正装价锚点（可选，展示在计算逻辑区）</div>
+    <textarea id="anchorsText" rows="3" placeholder="每行一个，如：&#10;精萃水150ml ¥1300（LA MER 官方旗舰店）&#10;碧玺洁面125ml ¥820 → ¥6.56/ml" style="width:100%; padding:10px; border:1px solid var(--line); border-radius:var(--radius-sm); font-size:13px; font-family:inherit; background:rgba(255,255,255,.6); resize:vertical;"></textarea>
+  </div>
+
+  <div class="dl-bar">
+    <div class="inner">
+      <span class="label" id="dlCount">0 件商品</span>
+      <button class="btn btn-primary" id="dlBtn">下载 Excel</button>
+      <button class="btn btn-ghost" id="backBtn">返回修改</button>
+    </div>
+  </div>
+</main>
+
+<!-- 加载浮层 -->
+<div class="overlay" id="overlay">
+  <div class="panel">
+    <div class="spinner"></div>
+    <div class="msg" id="ovMsg">正在 OCR 识别图片…</div>
+    <div class="sub" id="ovSub">首次加载模型约 1-2 秒</div>
+  </div>
+</div>
+
+<!-- 帮助浮层 -->
+<div class="modal-mask" id="helpMask">
+  <div class="modal">
+    <button class="close-x" id="helpClose">×</button>
+    <h2>使用说明书</h2>
+    <p>本工具把你上传的<b style="color:var(--ink);">商品主图</b>和你选的<b style="color:var(--ink);">日期</b>，按统一口径自动提取结构化信息，生成对比 Excel。</p>
+
+    <h3>① 上传</h3>
+    <ul>
+      <li>方式一：把图片<b>拖入</b>中央虚线框。</li>
+      <li>方式二：<code>⌘/Ctrl + V</code> 直接<b>从剪贴板粘贴</b>图片（可多次粘贴）。</li>
+      <li>方式三：点击中央框，<b>多选图片</b>一次性上传。</li>
+    </ul>
+
+    <h3>② 分批次选日期</h3>
+    <ul>
+      <li>同一批次（图1为今年、图2为去年；或不同活动）可以分别添加批次。</li>
+      <li>每个批次一个统一日期 → 该批次里所有图默认使用这个日期。</li>
+      <li>单张图也可单独改自己的日期（覆盖批次默认值）。</li>
+    </ul>
+
+    <h3>③ 运行</h3>
+    <ul>
+      <li>点「运行并识别」，后端自动 <b>OCR</b> 读取主图文字，再按规则解析出：主品、赠品明细、到手价/优惠文案、活动周期 logo。</li>
+      <li>跳转结果页，每张图可对解析结果<b>手动校正</b>（如 OCR 漏字、错字、需补值）。<b style="color:var(--ink);">新增：</b>商家货补（直播间/自播间）、商家券（店铺券/会员券）、购物金/储值权益均可逐条录入，并标注来源与是否计入折扣。</li>
+      <li>页面底部自动汇总<b>分项合计</b>与<b>主图宣称总减免差异</b>，方便校验。</li>
+      <li>点底部「下载 Excel」即按你校对的版本生成对比表（<b style="color:var(--ink);">17 列</b>：含商家优惠层 L/M/N + 平台券层 O/P/Q、原图嵌 A 列；<b style="color:var(--ink);">不同品牌自动分 Sheet</b>，单品牌则单 Sheet「对比表」）。Excel 中透传所有优惠明细字段。</li>
+    </ul>
+
+    <h3>④ 商家货补 / 商家券 / 购物金录入</h3>
+    <ul>
+      <li><b>商家货补：</b>直播间/自播间货补，多文案统一（如"主播直降补贴""直播间限时补贴"均归为货补），可添加多条分别录入。</li>
+      <li><b>商家券：</b>店铺券、会员券、直播券、商家红包等，与平台券区分。</li>
+      <li><b>购物金/储值：</b>充值膨胀类权益（如充500得550），<b>完全不计入折扣</b>（预充值非减免，规则10），仅作信息展示。</li>
+      <li>每条录入<b>名称、金额、门槛、来源</b>（主图 / OCR / 人工补充）、<b>是否计入折扣</b>。主图没有且未人工填写的 → 不导出。</li>
+    </ul>
+
+    <h3>⑤ OCR 自动能识别 vs 不能识别</h3>
+    <p><b>能识别：</b>主品名 + 规格 ml、赠品名 + ml（赠：…+…+…）、「会员加赠」类的工具赠品、限时直降/到手价 ¥X；<b style="color:var(--ink);">大促图还能识别平台券名与立减总额</b>（如 88VIP专享券 / 美妆加补券 / 领券立减¥250）。</p>
+    <p><b>不识别（结果页会标 <code>[需补充]</code>）：</b>主品官方原价（电商搜索才有的，图片通常不印刷）、优惠扣减金额（图片只印到手价）、赠品估值（需 ml × 正装单 ml 官方价）、平台券<b style="color:var(--ink);">具体金额拆分</b>（图里常只印合计立减额，券种拆分按当期平台规则补）。<b style="color:var(--ink);">商家货补、商家券、购物金默认全部人工补充</b>，OCR 不自动识别。</p>
+
+    <h3>⑥ 页面切换</h3>
+    <p>顶部「重新上传」可随时清空，回到 Page1 上传新一批图。</p>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============ 全局状态 ============ */
+const state = {
+  batches: [ { date: today(), brand: "", files: [] } ],
+  results: null,
+  tmpdir: null,
+};
+
+let FILE_ID = 1;
+
+function today() {
+  const d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+}
+
+/* ============ 工具函数 ============ */
+function ensureArr(it, key) {
+  if (!it[key] || !Array.isArray(it[key])) it[key] = [];
+  return it[key];
+}
+
+function newBenefitEntry() {
+  return { name: "", amount: 0, threshold: "", source: "人工补充", count_toward_discount: true };
+}
+
+function newShoppingFundEntry() {
+  return { name: "", amount: 0, threshold: "", source: "人工补充", count_toward_discount: false };
+}
+
+/* ============ 上传相关 ============ */
+const dropzone = document.getElementById("dropzone");
+const filePicker = document.getElementById("filePicker");
+const batchesEl = document.getElementById("batches");
+const addBatchBtn = document.getElementById("addBatchBtn");
+
+dropzone.addEventListener("click", () => filePicker.click());
+dropzone.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") filePicker.click(); });
+filePicker.addEventListener("change", e => {
+  const fs = Array.from(e.target.files || []);
+  if (fs.length) addFiles(fs);
+  filePicker.value = "";
+});
+["dragenter","dragover"].forEach(ev => dropzone.addEventListener(ev, e => { e.preventDefault(); dropzone.classList.add("drag"); }));
+["dragleave","drop"].forEach(ev => dropzone.addEventListener(ev, e => { e.preventDefault(); dropzone.classList.remove("drag"); }));
+dropzone.addEventListener("drop", e => {
+  e.preventDefault();
+  const fs = Array.from(e.dataTransfer.files || []).filter(f => f.type.startsWith("image/"));
+  if (fs.length) addFiles(fs);
+});
+
+window.addEventListener("paste", e => {
+  const items = e.clipboardData?.items || [];
+  const files = [];
+  for (const it of items) {
+    if (it.kind === "file" && it.type.startsWith("image/")) {
+      const f = it.getAsFile();
+      if (f) files.push(f);
+    }
+  }
+  if (files.length) {
+    addFiles(files);
+    e.preventDefault();
+    toast("已粘贴 " + files.length + " 张图");
+  }
+});
+
+addBatchBtn.addEventListener("click", () => {
+  state.batches.push({ date: today(), brand: "", files: [] });
+  renderBatches();
+});
+
+function addFiles(files) {
+  let target = state.batches.find(b => b.files.length === 0);
+  if (!target) target = state.batches[0];
+  for (const f of files) {
+    target.files.push({ id: FILE_ID++, file: f, date: target.date, brand: target.brand || "", url: URL.createObjectURL(f) });
+  }
+  renderBatches();
+}
+
+function renderBatches() {
+  batchesEl.innerHTML = "";
+  let hasFile = false;
+  state.batches.forEach((b, bi) => {
+    if (b.files.length > 0) hasFile = true;
+    const wrap = document.createElement("div");
+    wrap.className = "batch";
+    wrap.innerHTML = `
+      <div class="batch-head">
+        <div class="b-title">批次 ${bi+1} ${b.files.length ? `· ${b.files.length} 张` : "（空）"}</div>
+        <div class="b-date">
+          <label>本批次默认日期</label>
+          <input type="date" value="${b.date}" data-bi="${bi}" />
+        </div>
+        <div class="b-date">
+          <label>品牌</label>
+          <input type="text" value="${b.brand||''}" data-brand-bi="${bi}" placeholder="兰蔻 / 海蓝之谜" style="max-width:140px;" />
+        </div>
+        <div class="b-actions">
+          ${bi > 0 ? `<button class="btn btn-sm btn-danger" data-action="del-batch" data-bi="${bi}">删除批次</button>` : ""}
+        </div>
+      </div>
+      <div class="thumbs"></div>
+    `;
+    const th = wrap.querySelector(".thumbs");
+    b.files.forEach(f => {
+      const t = document.createElement("div");
+      t.className = "thumb";
+      t.innerHTML = `
+        <button class="th-del" data-id="${f.id}">×</button>
+        <img src="${f.url}" alt="" />
+        <div class="th-date">
+          <input type="date" value="${f.date}" data-id="${f.id}" />
+        </div>
+      `;
+      th.appendChild(t);
+    });
+    batchesEl.appendChild(wrap);
+  });
+
+  batchesEl.querySelectorAll('input[type="date"][data-bi]').forEach(inp => {
+    inp.addEventListener("change", e => {
+      const bi = +e.target.dataset.bi;
+      const v = e.target.value;
+      state.batches[bi].date = v;
+      state.batches[bi].files.forEach(f => f.date = v);
+      renderBatches();
+    });
+  });
+  batchesEl.querySelectorAll('input[data-brand-bi]').forEach(inp => {
+    inp.addEventListener("change", e => {
+      const bi = +e.target.dataset.brandBi;
+      state.batches[bi].brand = e.target.value;
+      // apply brand to all files in this batch
+      state.batches[bi].files.forEach(f => f.brand = e.target.value);
+    });
+  });
+  batchesEl.querySelectorAll('input[type="date"][data-id]').forEach(inp => {
+    inp.addEventListener("change", e => {
+      const id = +e.target.dataset.id;
+      const v = e.target.value;
+      for (const b of state.batches) {
+        const f = b.files.find(x => x.id === id);
+        if (f) { f.date = v; break; }
+      }
+    });
+  });
+  batchesEl.querySelectorAll(".th-del").forEach(b => {
+    b.addEventListener("click", e => {
+      const id = +e.currentTarget.dataset.id;
+      for (const b of state.batches) {
+        const i = b.files.findIndex(x => x.id === id);
+        if (i >= 0) { URL.revokeObjectURL(b.files[i].url); b.files.splice(i, 1); break; }
+      }
+      renderBatches();
+    });
+  });
+  batchesEl.querySelectorAll('[data-action="del-batch"]').forEach(b => {
+    b.addEventListener("click", e => {
+      const bi = +e.currentTarget.dataset.bi;
+      state.batches[bi].files.forEach(f => URL.revokeObjectURL(f.url));
+      state.batches.splice(bi, 1);
+      renderBatches();
+    });
+  });
+
+  document.getElementById("runBtn").disabled = !hasFile;
+}
+
+/* ============ 运行识别 ============ */
+const overlay = document.getElementById("overlay");
+const ovMsg = document.getElementById("ovMsg");
+const ovSub = document.getElementById("ovSub");
+
+document.getElementById("runBtn").addEventListener("click", async () => {
+  const fd = new FormData();
+  let n = 0;
+  for (const b of state.batches) {
+    for (const f of b.files) {
+      fd.append("images", f.file);
+      fd.append("dates", f.date);
+      fd.append("names", "");
+      fd.append("brands", f.brand || "");
+      n++;
+    }
+  }
+  if (!n) return;
+
+  overlay.classList.add("show");
+  ovMsg.textContent = "正在 OCR 识别 " + n + " 张图片…";
+  ovSub.textContent = "首次加载模型约 1-2 秒";
+  try {
+    const res = await fetch("/api/extract", { method: "POST", body: fd });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || "识别失败");
+    state.results = data.items;
+    state.tmpdir = data.tmpdir;
+    // 确保新字段存在
+    for (const it of state.results) {
+      it.parsed.merchant_subsidies = it.parsed.merchant_subsidies || [];
+      it.parsed.merchant_coupons = it.parsed.merchant_coupons || [];
+      it.parsed.shopping_funds = it.parsed.shopping_funds || [];
+      it.parsed.claimed_total_discount = parseFloat(it.parsed.claimed_total_discount) || 0;
+    }
+    renderResults();
+    document.getElementById("page1").classList.add("hidden");
+    document.getElementById("page2").classList.remove("hidden");
+    document.getElementById("goUploadBtn").style.display = "";
+    overlay.classList.remove("show");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  } catch (err) {
+    overlay.classList.remove("show");
+    toast("识别失败: " + err.message);
+  }
+});
+
+/* ============ 校验计算 ============ */
+function computeItemSummary(it) {
+  const p = it.parsed;
+  const subs = p.merchant_subsidies || [];
+  const mcps = p.merchant_coupons || [];
+  const sfs  = p.shopping_funds || [];
+  const pcs  = it.platform_coupons || p.platform_coupons || [];
+
+  function sumIf(items, countedOnly) {
+    return items.reduce((s, x) => {
+      if (countedOnly && !x.count_toward_discount) return s;
+      return s + (parseFloat(x.amount) || 0);
+    }, 0);
+  }
+
+  const subTotal   = sumIf(subs, true);
+  const mcpTotal   = sumIf(mcps, true);
+  const platFace   = pcs.reduce((s, c) => s + (parseFloat(c.amount) || 0), 0);
+  const sfTotal    = sumIf(sfs, false);
+
+  // 平台券门槛折算（规则12）
+  const official = parseFloat(it.official_price) || 0;
+  let platEffective = 0;
+  const prorationNotes = [];
+  pcs.forEach(c => {
+    const amt = parseFloat(c.amount) || 0;
+    const cond = c.condition || "";
+    const m = cond.match(/满[¥￥]?\s*(\d{3,5})/);
+    if (m && official > 0 && official < parseFloat(m[1])) {
+      const threshold = parseFloat(m[1]);
+      const eff = amt * (official / threshold);
+      platEffective += eff;
+      prorationNotes.push(`${c.name||'券'} ¥${amt}→¥${eff.toFixed(0)}（需凑单·${official}/${threshold}）`);
+    } else {
+      platEffective += amt;
+    }
+  });
+
+  const discTotal  = subTotal + mcpTotal + platEffective;
+  const claimed    = parseFloat(p.claimed_total_discount) || 0;
+  const diff       = claimed - discTotal;
+  const absDiff    = Math.abs(diff);
+
+  let status = "diff-neutral", label = "—";
+  if (claimed > 0 || discTotal > 0) {
+    if (absDiff < 0.01) { status = "diff-ok"; label = "✓ 一致"; }
+    else if (absDiff < 10) { status = "diff-warn"; label = "⚠ 小差异"; }
+    else { status = "diff-err"; label = "✗ 需核实"; }
+  }
+
+  return {
+    subTotal, mcpTotal, platFace, platEffective, sfTotal, discTotal, claimed, diff,
+    status, label, absDiff, itemName: it.name || ("图" + (it.idx||0+1)),
+    subCount: subs.length, mcpCount: mcps.length,
+    sfCount: sfs.length, pcCount: pcs.length, prorationNotes,
+  };
+}
+
+function renderSummary() {
+  const card = document.getElementById("summaryCard");
+  const tbody = document.getElementById("summaryTable").querySelector("tbody");
+  const thead = document.getElementById("summaryTable").querySelector("thead");
+  if (!state.results || !state.results.length) { card.style.display = "none"; return; }
+  card.style.display = "";
+
+  const summaries = state.results.map(it => computeItemSummary(it));
+  // 全局合计
+  const gt = summaries.reduce((acc, s) => ({
+    subTotal: acc.subTotal + s.subTotal, mcpTotal: acc.mcpTotal + s.mcpTotal,
+    platEffective: acc.platEffective + s.platEffective, sfTotal: acc.sfTotal + s.sfTotal,
+    discTotal: acc.discTotal + s.discTotal, claimed: acc.claimed + s.claimed,
+    diff: acc.diff + s.diff,
+  }), { subTotal:0, mcpTotal:0, platEffective:0, sfTotal:0, discTotal:0, claimed:0, diff:0 });
+
+  thead.innerHTML = `<tr>
+    <th>商品</th><th>商家货补(计入)</th><th>商家券(计入)</th><th>平台券</th>
+    <th>购物金</th><th>计入折扣合计</th><th>主图宣称总减免</th><th>差异</th><th>校验</th>
+  </tr>`;
+
+  tbody.innerHTML = "";
+  summaries.forEach(s => {
+    tbody.innerHTML += `<tr>
+      <td>${s.itemName}</td>
+      <td class="sm-num">¥${s.subTotal.toFixed(2)}</td>
+      <td class="sm-num">¥${s.mcpTotal.toFixed(2)}</td>
+      <td class="sm-num">¥${s.platEffective.toFixed(2)}</td>
+      <td class="sm-num">¥${s.sfTotal.toFixed(2)}</td>
+      <td class="sm-num" style="font-weight:700;">¥${s.discTotal.toFixed(2)}</td>
+      <td class="sm-num">¥${s.claimed.toFixed(2)}</td>
+      <td class="sm-num ${s.absDiff < 0.01 ? 'diff-ok' : s.absDiff < 10 ? 'diff-warn' : 'diff-err'}">¥${s.diff.toFixed(2)}</td>
+      <td class="${s.status}">${s.label}</td>
+    </tr>`;
+  });
+  // 合计行
+  const gAbs = Math.abs(gt.diff);
+  let gStatus = "diff-neutral", gLabel = "—";
+  if (gt.claimed > 0 || gt.discTotal > 0) {
+    if (gAbs < 0.01) { gStatus = "diff-ok"; gLabel = "✓ 一致"; }
+    else if (gAbs < 10) { gStatus = "diff-warn"; gLabel = "⚠ 小差异"; }
+    else { gStatus = "diff-err"; gLabel = "✗ 需核实"; }
+  }
+  tbody.innerHTML += `<tr style="font-weight:700; border-top:2px solid var(--line-strong);">
+    <td>合计</td>
+    <td class="sm-num">¥${gt.subTotal.toFixed(2)}</td>
+    <td class="sm-num">¥${gt.mcpTotal.toFixed(2)}</td>
+    <td class="sm-num">¥${gt.platEffective.toFixed(2)}</td>
+    <td class="sm-num">¥${gt.sfTotal.toFixed(2)}</td>
+    <td class="sm-num">¥${gt.discTotal.toFixed(2)}</td>
+    <td class="sm-num">¥${gt.claimed.toFixed(2)}</td>
+    <td class="sm-num ${gAbs < 0.01 ? 'diff-ok' : gAbs < 10 ? 'diff-warn' : 'diff-err'}">¥${gt.diff.toFixed(2)}</td>
+    <td class="${gStatus}">${gLabel}</td>
+  </tr>`;
+}
+
+/* ============ 通用权益区域渲染 ============ */
+function renderBenefitSection(container, items, prefix, itemIdx, defaultEntryFn) {
+  container.innerHTML = "";
+  const isSF = prefix === "shopping_funds";
+  (items || []).forEach((x, xi) => {
+    const counted = x.count_toward_discount !== false;
+    const row = document.createElement("div");
+    row.className = "benefit-edit";
+    row.innerHTML = `
+      <input type="text" data-bk="name" data-i="${itemIdx}" data-xi="${xi}" data-prefix="${prefix}" value="${x.name||''}" placeholder="名称" />
+      <input type="number" data-bk="amount" data-i="${itemIdx}" data-xi="${xi}" data-prefix="${prefix}" value="${x.amount||''}" placeholder="金额¥" step="0.01" />
+      <input type="text" data-bk="threshold" data-i="${itemIdx}" data-xi="${xi}" data-prefix="${prefix}" value="${x.threshold||''}" placeholder="门槛（如满500）" />
+      <select data-bk="source" data-i="${itemIdx}" data-xi="${xi}" data-prefix="${prefix}">
+        <option value="主图" ${x.source==='主图'?'selected':''}>主图</option>
+        <option value="OCR" ${x.source==='OCR'?'selected':''}>OCR</option>
+        <option value="人工补充" ${x.source==='人工补充'?'selected':''}>人工</option>
+      </select>
+      ${isSF
+        ? '<span style="font-size:11px; color:var(--red); white-space:nowrap;">不计入折扣</span>'
+        : `<label class="cb-label"><input type="checkbox" data-bk="counted" data-i="${itemIdx}" data-xi="${xi}" data-prefix="${prefix}" ${counted?'checked':''} />计入</label>`}
+      <button class="btn btn-sm btn-danger" data-del-benefit data-i="${itemIdx}" data-xi="${xi}" data-prefix="${prefix}">删</button>
+    `;
+    container.appendChild(row);
+  });
+}
+
+function bindBenefitEvents(card, itemIdx) {
+  card.querySelectorAll(".benefit-edit input, .benefit-edit select").forEach(inp => {
+    inp.addEventListener("change", e => {
+      const t = e.target;
+      const xi = +t.dataset.xi, prefix = t.dataset.prefix, bk = t.dataset.bk;
+      const arr = state.results[itemIdx].parsed[prefix];
+      if (!arr || !arr[xi]) return;
+      if (bk === "counted") {
+        arr[xi].count_toward_discount = t.checked;
+      } else if (bk === "amount") {
+        arr[xi].amount = parseFloat(t.value) || 0;
+      } else if (bk === "name" || bk === "threshold" || bk === "source") {
+        arr[xi][bk] = t.value;
+      }
+      renderSummary();
+    });
+  });
+
+  card.querySelectorAll("[data-del-benefit]").forEach(b => {
+    b.addEventListener("click", e => {
+      const xi = +e.currentTarget.dataset.xi, prefix = e.currentTarget.dataset.prefix;
+      const arr = state.results[itemIdx].parsed[prefix];
+      if (arr) { arr.splice(xi, 1); renderResults(); }
+    });
+  });
+
+  card.querySelectorAll("[data-add-benefit]").forEach(b => {
+    b.addEventListener("click", e => {
+      const prefix = e.currentTarget.dataset.prefix, fn = e.currentTarget.dataset.dfn;
+      const arr = ensureArr(state.results[itemIdx].parsed, prefix);
+      const entry = fn === "sf" ? newShoppingFundEntry() : newBenefitEntry();
+      arr.push(entry);
+      renderResults();
+    });
+  });
+}
+
+/* ============ Page 2 结果展示 + 编辑 ============ */
+function renderResults() {
+  const list = document.getElementById("r-list");
+  list.innerHTML = "";
+  state.results.forEach((it, i) => {
+    const p = it.parsed;
+    const card = document.createElement("div");
+    card.className = "r-card";
+
+    // 计算小结
+    const sum = computeItemSummary(it);
+
+    card.innerHTML = `
+      <img src="${it.image_url}${it.tmpdir ? '?d='+it.tmpdir : ''}" alt="" onerror="this.style.opacity=.3" />
+      <div class="r-meta">
+        <div class="r-line">
+          <label>日期</label>
+          <input type="date" data-k="date" data-i="${i}" value="${it.date || ''}" />
+        </div>
+        <div class="r-line">
+          <label>商品昵称</label>
+          <input type="text" data-k="name" data-i="${i}" placeholder="如：图1 兰蔻常规礼盒 / 图2 直播会员周" value="${it.name || ''}" />
+        </div>
+        <div class="r-line">
+          <label>品牌</label>
+          <input type="text" data-k="brand" data-i="${i}" placeholder="如：兰蔻 / 海蓝之谜（不同品牌自动分Sheet）" value="${it.brand || ''}" />
+        </div>
+        <div class="r-line">
+          <label>主品</label>
+          <input type="text" data-k="main_name" data-i="${i}" value="${p.main_product.name || ''}" />
+          <input type="text" data-k="main_spec" data-i="${i}" placeholder="规格" value="${p.main_product.spec || ''}" style="max-width:100px;" />
+        </div>
+        <div class="r-line">
+          <label>主品原价</label>
+          <input type="number" data-k="official_price" data-i="${i}" placeholder="需电商搜索/手动填" value="${it.official_price || ''}" style="max-width:130px;" />
+          <span style="color:var(--ink-3); font-size:12px;">OCR 无法自动获取</span>
+        </div>
+        <div class="r-line">
+          <label>活动周期</label>
+          <input type="text" data-k="period_logo" data-i="${i}" value="${(p.period_logo || '').slice(0,200)}" placeholder="logo + 活动期" />
+        </div>
+        <div class="r-line gifts-area">
+          <label style="align-self:flex-start;">赠品</label>
+          <div style="flex:1">
+            <div class="gh">${p.gifts.length} 件 · 可手动调整名称/ml/估值（建议补 ml × 正装单 ml 官方价）</div>
+            <div data-gifts="${i}"></div>
+            <div style="display:flex; gap:6px; margin-top:6px;">
+              <button class="btn btn-ghost btn-sm" data-add-gift="${i}">+ 加赠品</button>
+            </div>
+          </div>
+        </div>
+        <div class="r-line">
+          <label>优惠</label>
+          <input type="text" data-k="promo_type" data-i="${i}" placeholder="类型（直播间货补/限时直降…）" value="${p.promotion.type || ''}" style="max-width:200px;" />
+          <input type="number" data-k="promo_amount" data-i="${i}" placeholder="扣减金额（图片通常未印刷）" value="${p.promotion.amount || ''}" style="max-width:130px;" />
+          <input type="text" data-k="promo_condition" data-i="${i}" placeholder="条件" value="${p.promotion.condition || ''}" />
+        </div>
+        <div class="r-line">
+          <label>到手价</label>
+          <input type="number" data-k="final_price" data-i="${i}" value="${p.final_price || ''}" style="max-width:130px;" />
+        </div>
+
+        <!-- 商家货补 -->
+        <div class="r-line gifts-area">
+          <label style="align-self:flex-start;">商家货补</label>
+          <div style="flex:1">
+            <div class="gh">直播间/自播间货补（多文案统一）。来源、是否计入折扣均可调。主图没写且未补 → 不导出</div>
+            <div data-benefits="merchant_subsidies_${i}"></div>
+            <div style="display:flex; gap:6px; margin-top:6px;">
+              <button class="btn btn-ghost btn-sm" data-add-benefit data-i="${i}" data-prefix="merchant_subsidies" data-dfn="ms">+ 加货补</button>
+            </div>
+          </div>
+        </div>
+        <!-- 商家券 -->
+        <div class="r-line gifts-area">
+          <label style="align-self:flex-start;">商家券</label>
+          <div style="flex:1">
+            <div class="gh">店铺券/会员券/直播券等，非平台券。来源、是否计入折扣均可调</div>
+            <div data-benefits="merchant_coupons_${i}"></div>
+            <div style="display:flex; gap:6px; margin-top:6px;">
+              <button class="btn btn-ghost btn-sm" data-add-benefit data-i="${i}" data-prefix="merchant_coupons" data-dfn="mc">+ 加商家券</button>
+            </div>
+          </div>
+        </div>
+        <!-- 购物金/储值权益 -->
+        <div class="r-line gifts-area">
+          <label style="align-self:flex-start;">购物金/储值</label>
+          <div style="flex:1">
+            <div class="gh">充值膨胀类权益（充500得550等），<b>仅展示，不计入折扣率</b>（规则10）</div>
+            <div data-benefits="shopping_funds_${i}"></div>
+            <div style="display:flex; gap:6px; margin-top:6px;">
+              <button class="btn btn-ghost btn-sm" data-add-benefit data-i="${i}" data-prefix="shopping_funds" data-dfn="sf">+ 加购物金</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 主图宣称总减免 -->
+        <div class="r-line">
+          <label>宣称总减免</label>
+          <input type="number" data-k="claimed_total_discount" data-i="${i}" value="${p.claimed_total_discount || ''}" placeholder="OCR初值，可手动修正" style="max-width:150px;" step="0.01" />
+          <span style="color:var(--ink-3); font-size:12px;">图里印的总优惠额（可修正）</span>
+        </div>
+
+        <!-- 平台券 -->
+        <div class="r-line gifts-area">
+          <label style="align-self:flex-start;">平台券</label>
+          <div style="flex:1">
+            <div class="gh">平台大促发放给消费者的券（88VIP/品类券/加补券/惊喜券），在商家到手价上再叠加一道折扣</div>
+            <div data-pcoupons="${i}"></div>
+            <div style="display:flex; gap:6px; margin-top:6px;">
+              <button class="btn btn-ghost btn-sm" data-add-pcoupon="${i}">+ 加平台券</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 单图小结 -->
+        <div class="item-summary">
+          <span><span class="is-label">货补(计入)</span> <span class="is-val">¥${sum.subTotal.toFixed(2)}</span></span>
+          <span><span class="is-label">商家券(计入)</span> <span class="is-val">¥${sum.mcpTotal.toFixed(2)}</span></span>
+          <span><span class="is-label">平台券</span> <span class="is-val">¥${sum.platEffective.toFixed(2)}</span>${sum.platFace !== sum.platEffective ? `<span style="font-size:10px;color:var(--orange);">（面值¥${sum.platFace.toFixed(0)}）</span>` : ''}</span>
+          <span><span class="is-label">购物金</span> <span class="is-val">¥${sum.sfTotal.toFixed(2)}</span></span>
+          <span><span class="is-label">计入合计</span> <span class="is-val" style="font-size:14px;">¥${sum.discTotal.toFixed(2)}</span></span>
+          <span><span class="is-label">宣称</span> <span class="is-val">¥${sum.claimed.toFixed(2)}</span></span>
+          <span class="is-val ${sum.status}">${sum.label} (¥${sum.diff.toFixed(2)})</span>
+          ${sum.prorationNotes.length ? `<div style="grid-column:1/-1; font-size:11px; color:var(--orange);">平台券折算: ${sum.prorationNotes.join('；')}</div>` : ''}
+        </div>
+
+        ${p.needs?.length ? `<div class="needs">⚠️ 自动没识别到：${p.needs.join(" · ")} — 可在上方手动补</div>` : ""}
+        <details style="margin-top:4px;">
+          <summary style="cursor:pointer; color:var(--ink-3); font-size:12.5px;">查看 OCR 全文</summary>
+          <pre style="white-space:pre-wrap; font-size:12px; color:var(--ink-2); background: rgba(255,255,255,.4); padding:10px; border-radius:8px; margin:8px 0 0;">${(p.raw_text||'').replace(/[<>&]/g, c=>({"<":"&lt;",">":"&gt;","&":"&amp;"}[c]))}</pre>
+        </details>
+      </div>
+    `;
+    list.appendChild(card);
+
+    // 赠品编辑
+    const giftsDiv = card.querySelector(`[data-gifts="${i}"]`);
+    const renderGifts = () => {
+      giftsDiv.innerHTML = "";
+      p.gifts.forEach((g, gi) => {
+        const row = document.createElement("div");
+        row.className = "gift-edit";
+        row.style.marginBottom = "6px";
+        row.innerHTML = `
+          <input type="text" data-gk="name" data-i="${i}" data-gi="${gi}" value="${g.name||''}" placeholder="名称" />
+          <input type="text" data-gk="spec" data-i="${i}" data-gi="${gi}" value="${g.spec||''}" placeholder="规格（如 30ml / ×1）" />
+          <input type="number" data-gk="ml" data-i="${i}" data-gi="${gi}" value="${g.ml_count||''}" placeholder="ml" />
+          <input type="number" data-gk="value" data-i="${i}" data-gi="${gi}" value="${g.value||''}" placeholder="估值 ¥" />
+          <button class="btn btn-sm btn-danger" data-del-gift data-i="${i}" data-gi="${gi}">删</button>
+          ${g.is_tool ? '<span style="font-size:11px; color:var(--ink-3); grid-column: span 5;">[工具类赠品，估值按 ¥0]</span>' : ''}
+        `;
+        giftsDiv.appendChild(row);
+      });
+    };
+    renderGifts();
+
+    // 商家货补/商家券/购物金 编辑
+    const prefixes = ["merchant_subsidies", "merchant_coupons", "shopping_funds"];
+    prefixes.forEach(prefix => {
+      const cont = card.querySelector(`[data-benefits="${prefix}_${i}"]`);
+      if (!cont) return;
+      const items = ensureArr(p, prefix);
+      const defn = prefix === "shopping_funds" ? newShoppingFundEntry : newBenefitEntry;
+      renderBenefitSection(cont, items, prefix, i, defn);
+    });
+    bindBenefitEvents(card, i);
+
+    // 绑定核心字段
+    card.querySelectorAll("input").forEach(inp => {
+      inp.addEventListener("change", e => {
+        const t = e.target;
+        const k = t.dataset.k, i2 = +t.dataset.i;
+        if (!k) return;  // 权益字段由 bindBenefitEvents 处理
+        if (k === "date") state.results[i2].date = t.value;
+        else if (k === "name") state.results[i2].name = t.value;
+        else if (k === "brand") state.results[i2].brand = t.value;
+        else if (k === "official_price") state.results[i2].official_price = parseFloat(t.value)||0;
+        else if (k === "final_price") state.results[i2].parsed.final_price = parseFloat(t.value)||0;
+        else if (k === "period_logo") state.results[i2].parsed.period_logo = t.value;
+        else if (k === "promo_type") state.results[i2].parsed.promotion.type = t.value;
+        else if (k === "promo_amount") state.results[i2].parsed.promotion.amount = parseFloat(t.value)||0;
+        else if (k === "promo_condition") state.results[i2].parsed.promotion.condition = t.value;
+        else if (k === "main_name") state.results[i2].parsed.main_product.name = t.value;
+        else if (k === "main_spec") state.results[i2].parsed.main_product.spec = t.value;
+        else if (k === "claimed_total_discount") {
+          state.results[i2].parsed.claimed_total_discount = parseFloat(t.value)||0;
+          renderSummary();
+        }
+        else if (k && t.dataset.gi !== undefined) {
+          const gi = +t.dataset.gi;
+          const g = state.results[i2].parsed.gifts[gi];
+          const gk = t.dataset.gk;
+          if (gk === "name") g.name = t.value;
+          else if (gk === "spec") g.spec = t.value;
+          else if (gk === "ml") g.ml_count = parseFloat(t.value)||0;
+          else if (gk === "value") g.value = parseFloat(t.value)||0;
+        }
+        if (k && (k.includes("promo") || k.includes("claimed"))) renderSummary();
+        if (!t.dataset.gi && !t.dataset.xi) return;
+      });
+    });
+
+    card.querySelectorAll("[data-del-gift]").forEach(b => {
+      b.addEventListener("click", e => {
+        const i2 = +e.currentTarget.dataset.i, gi = +e.currentTarget.dataset.gi;
+        state.results[i2].parsed.gifts.splice(gi, 1);
+        renderResults();
+      });
+    });
+
+    card.querySelector(`[data-add-gift="${i}"]`).addEventListener("click", e => {
+      state.results[i].parsed.gifts.push({ name:"", spec:"", ml_count:0, is_tool:false, value:0 });
+      renderResults();
+    });
+
+    // 平台券编辑
+    if (!state.results[i].platform_coupons) {
+      state.results[i].platform_coupons = (p.platform_coupons || []).map(c => ({ ...c }));
+    }
+    const pcDiv = card.querySelector(`[data-pcoupons="${i}"]`);
+    const renderPC = () => {
+      pcDiv.innerHTML = "";
+      (state.results[i].platform_coupons || []).forEach((c, ci) => {
+        const row = document.createElement("div");
+        row.className = "gift-edit";
+        row.style.marginBottom = "6px";
+        row.innerHTML = `
+          <input type="text" data-pck="name" data-i="${i}" data-ci="${ci}" value="${c.name||''}" placeholder="券名(88VIP/品类券/加补券…)" />
+          <input type="number" data-pck="amount" data-i="${i}" data-ci="${ci}" value="${c.amount||''}" placeholder="金额¥" />
+          <input type="text" data-pck="condition" data-i="${i}" data-ci="${ci}" value="${c.condition||''}" placeholder="门槛/说明" style="grid-column: span 2;" />
+          <button class="btn btn-sm btn-danger" data-del-pcoupon data-i="${i}" data-ci="${ci}">删</button>
+        `;
+        pcDiv.appendChild(row);
+      });
+    };
+    renderPC();
+    pcDiv.querySelectorAll("input").forEach(inp => {
+      inp.addEventListener("change", e => {
+        const t = e.target, i2 = +t.dataset.i, ci = +t.dataset.ci;
+        const c = state.results[i2].platform_coupons[ci];
+        const pck = t.dataset.pck;
+        if (pck === "name") c.name = t.value;
+        else if (pck === "amount") { c.amount = parseFloat(t.value) || 0; renderSummary(); }
+        else if (pck === "condition") c.condition = t.value;
+      });
+    });
+    card.querySelectorAll("[data-del-pcoupon]").forEach(b => {
+      b.addEventListener("click", e => {
+        const i2 = +e.currentTarget.dataset.i, ci = +e.currentTarget.dataset.ci;
+        state.results[i2].platform_coupons.splice(ci, 1);
+        renderResults();
+      });
+    });
+    card.querySelector(`[data-add-pcoupon="${i}"]`).addEventListener("click", e => {
+      if (!state.results[i].platform_coupons) state.results[i].platform_coupons = [];
+      state.results[i].platform_coupons.push({ name:"", amount:0, condition:"" });
+      renderResults();
+    });
+  });
+
+  document.getElementById("dlCount").textContent = state.results.length + " 件商品";
+  renderSummary();
+}
+
+/* ============ 下载 ============ */
+document.getElementById("dlBtn").addEventListener("click", async () => {
+  overlay.classList.add("show");
+  ovMsg.textContent = "正在生成 Excel…";
+  ovSub.textContent = "";
+  try {
+    const res = await fetch("/api/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tmpdir: state.tmpdir,
+        anchors_text: (document.getElementById("anchorsText") || {}).value || "",
+        items: state.results.map(it => ({
+          image_path: it.image_path,
+          name: it.name,
+          brand: it.brand || "",
+          date: it.date,
+          official_price: it.official_price || 0,
+          final_price: it.parsed.final_price || 0,
+          platform_coupons: it.platform_coupons || [],
+          claimed_total_discount: it.parsed.claimed_total_discount || 0,
+          merchant_subsidies: it.parsed.merchant_subsidies || [],
+          merchant_coupons: it.parsed.merchant_coupons || [],
+          shopping_funds: it.parsed.shopping_funds || [],
+          parsed: it.parsed,
+        })),
+      }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "竞品优惠对比分析.xlsx";
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+    overlay.classList.remove("show");
+    toast("已下载 Excel");
+  } catch (err) {
+    overlay.classList.remove("show");
+    toast("生成失败: " + err.message);
+  }
+});
+
+document.getElementById("backBtn").addEventListener("click", () => {
+  document.getElementById("page2").classList.add("hidden");
+  document.getElementById("page1").classList.remove("hidden");
+  document.getElementById("goUploadBtn").style.display = "none";
+  window.scrollTo({ top: 0, behavior: "smooth" });
+});
+
+document.getElementById("goUploadBtn").addEventListener("click", () => {
+  for (const b of state.batches) b.files.forEach(f => URL.revokeObjectURL(f.url));
+  state.batches = [{ date: today(), files: [] }];
+  state.results = null;
+  renderBatches();
+  document.getElementById("page2").classList.add("hidden");
+  document.getElementById("page1").classList.remove("hidden");
+  document.getElementById("goUploadBtn").style.display = "none";
+});
+
+/* ============ 帮助浮层 ============ */
+const helpMask = document.getElementById("helpMask");
+document.getElementById("helpBtn").addEventListener("click", () => helpMask.classList.add("show"));
+document.getElementById("helpClose").addEventListener("click", () => helpMask.classList.remove("show"));
+helpMask.addEventListener("click", e => { if (e.target === helpMask) helpMask.classList.remove("show"); });
+
+/* ============ Toast ============ */
+const toastEl = document.getElementById("toast");
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastEl._t);
+  toastEl._t = setTimeout(() => toastEl.classList.remove("show"), 2200);
+}
+
+renderBatches();
+</script>
+</body>
+</html>
