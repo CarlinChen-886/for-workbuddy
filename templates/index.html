@@ -839,7 +839,13 @@ function renderResults() {
         case 'mcoupons':     return (p.merchant_coupons||[]).length ? tag(OCR_OK, '已识别·OCR') : tag(OCR_MISS, '图里未印/查店铺');
         case 'sfunds':       return (p.shopping_funds||[]).length ? tag(OCR_OK, '已识别·OCR') : tag(OCR_MISS, '图里未印');
         case 'claimed':      return p.claimed_total_discount > 0 ? tag(OCR_OK, '已识别·OCR') : tag(OCR_MISS, '图里未印·查详情页');
-        case 'official':     return tag(OCR_MISS, 'OCR无法·查天猫');
+        case 'official': {
+          const opa = p.official_price_auto || {};
+          if (opa.status === 'ok' && opa.price > 0) return tag(OCR_OK, '已查·电商');
+          if (opa.status === 'anchor_estimate' && opa.price > 0) return tag(OCR_UNSURE, '锚点估算·请确认');
+          if (opa.status === 'not_found') return tag(OCR_UNSURE, '自动未找到·可手动');
+          return tag(OCR_MISS, '自动查价未启');
+        }
         default: return '';
       }
     }
@@ -866,8 +872,8 @@ function renderResults() {
         </div>
         <div class="r-line">
           <label>主品原价 ${tagFor('official')}</label>
-          <input type="number" data-k="official_price" data-i="${i}" placeholder="需电商搜索/手动填" value="${it.official_price || ''}" style="max-width:130px;" />
-          <span style="color:var(--ink-3); font-size:12px;">请到该品牌天猫官旗查正价（如「黑绷带[50]面霜50ml」）</span>
+          <input type="number" data-k="official_price_user" data-i="${i}" placeholder="未自动查到时可手动填" value="${p.official_price_auto && p.official_price_auto.price > 0 ? p.official_price_auto.price : ''}" style="max-width:130px;" />
+          <span style="color:${p.official_price_auto && p.official_price_auto.status==='ok' ? 'var(--green)' : 'var(--orange)'}; font-size:12px;">${p.official_price_auto && p.official_price_auto.price > 0 ? (p.official_price_auto.status==='ok' ? `✅ 自动查得 ¥${p.official_price_auto.price} · ${p.official_price_auto.source || ''}` : `📐 锚点估算 ¥${p.official_price_auto.price} · ${p.official_price_auto.source || ''}（请确认）`) : (p.official_price_auto && p.official_price_auto.source) || '自动查价中…'}</span>
         </div>
         <div class="r-line">
           <label>活动周期 ${tagFor('period')}</label>
@@ -876,7 +882,7 @@ function renderResults() {
         <div class="r-line gifts-area">
           <label style="align-self:flex-start;">赠品 ${tagFor('gifts')}</label>
           <div style="flex:1">
-            <div class="gh">${p.gifts.length} 件 · 可手动调整名称/ml/估值（建议补 ml × 正装单 ml 官方价）</div>
+            <div class="gh">${p.gifts.length} 件 · 估值已用锚点库自动算（ml × 单 ml 价），有异议可手动改</div>
             <div data-gifts="${i}"></div>
             <div style="display:flex; gap:6px; margin-top:6px;">
               <button class="btn btn-ghost btn-sm" data-add-gift="${i}">+ 加赠品</button>
@@ -984,9 +990,9 @@ function renderResults() {
           <input type="text" data-gk="name" data-i="${i}" data-gi="${gi}" value="${g.name||''}" placeholder="名称" />
           <input type="text" data-gk="spec" data-i="${i}" data-gi="${gi}" value="${g.spec||''}" placeholder="规格（如 30ml / ×1）" />
           <input type="number" data-gk="ml" data-i="${i}" data-gi="${gi}" value="${g.ml_count||''}" placeholder="ml" />
-          <input type="number" data-gk="value" data-i="${i}" data-gi="${gi}" value="${g.value||''}" placeholder="估值 ¥" />
+          <input type="number" data-gk="value_user" data-i="${i}" data-gi="${gi}" value="${g.value_auto && g.value_auto>0 ? g.value_auto : ''}" placeholder="${g.value_status==='no_anchor' ? '赠品未命中锚点' : '自动未算'}" />
           <button class="btn btn-sm btn-danger" data-del-gift data-i="${i}" data-gi="${gi}">删</button>
-          ${g.is_tool ? '<span style="font-size:11px; color:var(--ink-3); grid-column: span 5;">[工具类赠品，估值按 ¥0]</span>' : ''}
+          ${g.is_tool ? '<span style="font-size:11px; color:var(--ink-3); grid-column: span 5;">[工具类赠品，估值按 ¥0]</span>' : (g.value_formula ? `<span style="font-size:10.5px; color:var(--green); grid-column: span 5;">${g.value_formula}</span>` : (g.value_status==='no_anchor' ? '<span style="font-size:10.5px; color:var(--orange); grid-column: span 5;">⚠ 赠品名未命中锚点库（可能为新品或非主流 SKU），可手动填估值</span>' : ''))}
         `;
         giftsDiv.appendChild(row);
       });
@@ -1032,7 +1038,7 @@ function renderResults() {
           if (gk === "name") g.name = t.value;
           else if (gk === "spec") g.spec = t.value;
           else if (gk === "ml") g.ml_count = parseFloat(t.value)||0;
-          else if (gk === "value") g.value = parseFloat(t.value)||0;
+          else if (gk === "value_user") g.value_user = parseFloat(t.value)||0;
         }
         if (k && (k.includes("promo") || k.includes("claimed"))) renderSummary();
         if (!t.dataset.gi && !t.dataset.xi) return;

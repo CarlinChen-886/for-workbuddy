@@ -8,6 +8,8 @@ from flask import Flask, request, send_file, render_template, jsonify
 # 复用 Excel 生成逻辑 + OCR 解析（同级目录，支持本地和云部署）
 from build_excel import build_workbook
 from ocr_parser import parse_image_ocr
+from shopme import auto_lookup_main_price
+from anchors import compute_gift_value
 
 app = Flask(__name__)
 app.config["TEMPLATES_AUTO_RELOAD"] = True
@@ -78,6 +80,23 @@ def api_extract():
                     parsed.setdefault("merchant_subsidies", [])
                     parsed.setdefault("merchant_coupons", [])
                     parsed.setdefault("shopping_funds", [])
+                    # ── 全自动：OCR 后立即查主品官方正价 + 用锚点库算赠品价值 ──
+                    try:
+                        mn = parsed.get("main_product", {}).get("name", "")
+                        ms = parsed.get("main_product", {}).get("spec", "")
+                        parsed["official_price_auto"] = auto_lookup_main_price(mn, ms, raw_text=parsed.get("raw_text", ""))
+                    except Exception as e:
+                        parsed["official_price_auto"] = {"price": 0, "source": f"自动查价异常:{str(e)[:60]}", "status": "error"}
+                    for g in parsed.get("gifts", []):
+                        try:
+                            v = compute_gift_value(g.get("name", ""), g.get("spec", ""))
+                            g["value_auto"] = v.get("value", 0)
+                            g["value_formula"] = v.get("formula", "")
+                            g["value_status"] = v.get("status", "no_anchor")
+                        except Exception as e:
+                            g["value_auto"] = 0
+                            g["value_formula"] = f"自动算异常:{str(e)[:60]}"
+                            g["value_status"] = "error"
             except Exception as e:
                 parsed["needs"] = ["OCR识别失败：" + str(e)[:80]]
             return i, parsed, path, ext
@@ -169,10 +188,13 @@ def _parsed_to_excel_product(item):
     gifts = []
     for g in gifts_in:
         name = g.get("name", "")
+        # 赠品价值：优先用户手动填（value_user），否则用锚点库自动算（value_auto）
+        user_v = g.get("value_user")
+        auto_v = g.get("value_auto", 0) or 0
         try:
-            value = float(g.get("value", 0) or 0)
+            value = float(user_v if user_v not in (None, "") else auto_v)
         except Exception:
-            value = 0.0
+            value = float(auto_v)
         gifts.append({
             "name": name + (" [工具]" if g.get("is_tool") else ""),
             "spec": g.get("spec", ""),
@@ -184,6 +206,13 @@ def _parsed_to_excel_product(item):
         official = float(item.get("official_price", 0) or 0)
     except Exception:
         official = 0.0
+    # 主品官方正价：优先用户在前端手动填的（official_price_user），否则用 OCR 后自动查的 official_price_auto
+    user_official = item.get("official_price_user")
+    auto_official = (p.get("official_price_auto") or {}).get("price", 0) or 0
+    try:
+        official = float(user_official if user_official not in (None, "") else (item.get("official_price") or auto_official))
+    except Exception:
+        official = float(item.get("official_price") or auto_official or 0)
     try:
         final = float(item.get("final_price", p.get("final_price", 0)) or 0)
     except Exception:
