@@ -267,9 +267,9 @@ def api_generate():
 
 
 if __name__ == "__main__":
-    import argparse
+    import argparse, os
     parser = argparse.ArgumentParser()
-    parser.add_argument("--port", type=int, default=5055)
+    parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", 5055)))
     parser.add_argument("--host", type=str, default="0.0.0.0")
     args = parser.parse_args()
     app.run(host=args.host, port=args.port, threaded=True)
