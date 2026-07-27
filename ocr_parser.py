@@ -190,12 +190,31 @@ def _get_gifts(blocks):
 
     # 去重（按归一化名称 + 规格，合并"碧玺洁面会员礼"与"碧玺洁面"这类重复）
     _suf = re.compile(r'(会员礼|加赠|买即享|焕新礼|加赠礼|直播加赠|随单赠|买即送|限定|新客|服务|详情|领取|备注|暗号|进直播间|页面|显示|实际|为准|需提前拍下|礼)$')
+    _spec_bracket = re.compile(r'[【\[][^】\]]*[\]】]')   # 容忍中括号内任意字符：去掉 [50] [50面霜] 【全新】 等规格码
+
+    def _norm_name(n):
+        # 1) 去规格码（中括号/方括号/全角括号里带数字）
+        n2 = _spec_bracket.sub('', n)
+        # 2) 去尾部礼遇后缀词
+        n2 = _suf.sub('', n2)
+        # 3) 去两端修饰字符
+        return n2.strip(" ·：:（）()×xXlL")
     def _key(n):
-        return _suf.sub('', n).strip(" ·：:（）()×xXlL")
+        return _norm_name(n)
     seen, out = set(), []
+    main_name_norm = _norm_name(main.get("name", "")) if main else ""
     for g in gifts:
-        key = (_key(g["name"]), g["spec"])
+        key = (_norm_name(g["name"]), g["spec"])
+        # 过滤 1：去重
         if key in seen:
+            continue
+        # 过滤 2：主品名/缩写被 OCR 误判为赠品（如"全新黑绷带[50面霜]"进了赠品列表）
+        gnorm = _norm_name(g["name"])
+        if gnorm and main_name_norm and (
+            gnorm == main_name_norm
+            or (len(main_name_norm) >= 3 and main_name_norm in gnorm)
+            or (len(gnorm) >= 3 and gnorm in main_name_norm)
+        ):
             continue
         seen.add(key)
         out.append(g)
