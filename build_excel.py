@@ -13,6 +13,23 @@ def pct(x):
         return "—"
     return f"{x*100:.1f}%"
 
+
+def _safe_str(s):
+    """防止以 = + - @ 开头的字符串被 Excel/WPS 误判为公式 → 显示 #NAME?
+
+    OCR 偶尔会把 ¥ 前面带噪声或把产品名前缀识别成 `=`/`+`/`-`/`@`，
+    openpyxl 把以这些符号开头的字符串当作公式写入，打开时 WPS 报 #NAME?。
+    修正：行首出现的公式触发符替换成全角等价（仍可读），不改变正文。
+    """
+    if not isinstance(s, str) or not s:
+        return s
+    if "\r" in s:
+        s = s.replace("\r", "")
+    repl = {"=": "＝", "+": "＋", "-": "－", "@": "＠"}
+    if s[0] in repl:
+        s = repl[s[0]] + s[1:]
+    return s
+
 # 图片显示尺寸（像素）→ 对应 Excel 列宽/行高
 IMG_TARGET_H = 300          # 显示高度
 IMG_COL_W = 34              # A 列宽度（约 238px）
@@ -141,18 +158,18 @@ def _fill_sheet(ws, products, anchors_specs):
         total_off = (1 - final / total_value) if total_value else 0
         disc_rate = (final / total_value) if total_value else 0
 
-        gift_names = "\n".join(g["name"] for g in gifts) or "无"
-        gift_vals = "\n".join(f'{g["name"]}：¥{g.get("value",0):.2f}' for g in gifts) or "无"
+        gift_names = "\n".join(_safe_str(g["name"]) for g in gifts) or "无"
+        gift_vals = "\n".join(_safe_str(f'{g["name"]}：¥{g.get("value",0):.2f}') for g in gifts) or "无"
         promos = p.get("promotions", [])
-        promo_txt = "\n".join(f'{x["type"]}：¥{x.get("amount",0)}（{x.get("condition","")}）' for x in promos) or "无"
+        promo_txt = "\n".join(_safe_str(f'{x["type"]}：¥{x.get("amount",0)}（{x.get("condition","")}）') for x in promos) or "无"
         # 购物金/储值权益（规则 10）：单独展示，不参与折扣计算
         sc = p.get("shopping_credits")
         if sc and sc.get("amount", 0) > 0:
-            promo_txt += f'\n\n【储值权益 · 不计入折扣】\n{sc.get("type","购物金")}：¥{sc.get("amount",0):g}（{sc.get("condition","")}）'
+            promo_txt += f'\n\n【储值权益 · 不计入折扣】\n{_safe_str(sc.get("type","购物金"))}：¥{sc.get("amount",0):g}（{sc.get("condition","")}）'
             if sc.get("note"):
                 promo_txt += f'\n注：{sc.get("note")}'
         elif sc and sc.get("type"):
-            promo_txt += f'\n\n【储值权益 · 不计入折扣】\n{sc.get("type","购物金")}：待确认（{sc.get("condition","")}）'
+            promo_txt += f'\n\n【储值权益 · 不计入折扣】\n{_safe_str(sc.get("type","购物金"))}：待确认（{sc.get("condition","")}）'
 
         # 平台优惠层（规则 8/12：门槛不足时按比例折算）
         plat_coupons = p.get("platform_coupons", [])
@@ -161,7 +178,7 @@ def _fill_sheet(ws, products, anchors_specs):
         if plat_coupons:
             plat_lines = []
             for x in plat_coupons:
-                base = f'{x.get("name","平台券")}：¥{x.get("amount",0)}（{x.get("condition","")}）'
+                base = _safe_str(f'{x.get("name","平台券")}：¥{x.get("amount",0)}（{x.get("condition","")}）')
                 if x.get("prorated"):
                     base += f'\n  {x.get("prorate_note","")}'
                 plat_lines.append(base)
@@ -183,10 +200,10 @@ def _fill_sheet(ws, products, anchors_specs):
         row = [
             "",  # A 留空，图片随后锚定
             p.get("upload_date", ""),
-            p.get("name", ""),
-            p.get("main_product", ""),
-            p.get("main_composition", ""),
-            f'周期：{p.get("period","")}\n文案：{p.get("logo_text","")}',
+            _safe_str(p.get("name", "")),
+            _safe_str(p.get("main_product", "")),
+            _safe_str(p.get("main_composition", "")),
+            _safe_str(f'周期：{p.get("period","")}\n文案：{p.get("logo_text","")}'),
             official_disp,
             gift_names,
             gift_vals,
@@ -198,7 +215,9 @@ def _fill_sheet(ws, products, anchors_specs):
             plat_txt,
             final_plat,
             plat_off_disp,
-        ]
+        ]  # fmt: skip
+        # 对 row 里所有字符串值统一防公式触发（_safe_str 已对单字段处理过gift/promo/plat，对其他字段再扫一次保险）
+        row = [_safe_str(v) if isinstance(v, str) else v for v in row]
         ws.append(row)
         r = ws.max_row
         for c in ws[r]:
