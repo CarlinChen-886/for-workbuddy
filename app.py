@@ -31,85 +31,94 @@ def index():
 @app.route("/api/extract", methods=["POST"])
 def api_extract():
     """接收多张图片+用户为每图选的日期，并发运行 OCR + 解析，返回结构化 JSON"""
-    from concurrent.futures import ThreadPoolExecutor, as_completed
-    files = request.files.getlist("images")
-    dates = request.form.getlist("dates")
-    names = request.form.getlist("names") or []
-    brands = request.form.getlist("brands") or []
-    if not files:
-        return jsonify({"ok": False, "error": "未收到图片"}), 400
+    try:
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        from threading import Lock
+        files = request.files.getlist("images")
+        dates = request.form.getlist("dates")
+        names = request.form.getlist("names") or []
+        brands = request.form.getlist("brands") or []
+        if not files:
+            return jsonify({"ok": False, "error": "未收到图片"}), 400
 
-    tmpdir = tempfile.mkdtemp(prefix="giftcmp_")
-    ocr = _get_ocr()
+        tmpdir = tempfile.mkdtemp(prefix="giftcmp_")
+        ocr = _get_ocr()
+        ocr_lock = Lock()
 
-    # 先保存文件（轻量）+ 并行OCR
-    tasks = []
-    for i, f in enumerate(files):
-        if not f.filename:
-            continue
-        ext = os.path.splitext(f.filename)[1].lower() or ".png"
-        if ext not in (".png", ".jpg", ".jpeg", ".webp", ".gif"):
-            ext = ".png"
-        path = os.path.join(tmpdir, f"img_{i}{ext}")
-        f.save(path)
-        tasks.append((i, f, path, ext))
+        # 先保存文件（轻量）+ 并行OCR
+        tasks = []
+        for i, f in enumerate(files):
+            if not f.filename:
+                continue
+            ext = os.path.splitext(f.filename)[1].lower() or ".png"
+            if ext not in (".png", ".jpg", ".jpeg", ".webp", ".gif"):
+                ext = ".png"
+            path = os.path.join(tmpdir, f"img_{i}{ext}")
+            f.save(path)
+            tasks.append((i, f, path, ext))
 
-    def _ocr_one(i, f, path, ext):
-        parsed = {"main_product": {"name": "", "spec": "", "raw": "", "ml": 0},
-                  "gifts": [], "promotion": {"type": "", "amount": 0.0, "condition": "", "raw": ""},
-                  "final_price": 0.0, "platform_coupons": [], "period_logo": "",
-                  "raw_text": "", "needs": [],
-                  "merchant_subsidies": [],
-                  "merchant_coupons": [],
-                  "shopping_funds": [],
-                  "claimed_total_discount": 0.0}
-        try:
-            res, _ = ocr(path)
-            if res:
-                parsed = parse_image_ocr(res)
-                platform_ocr_total = sum(c.get("amount", 0) or 0 for c in parsed.get("platform_coupons", []))
-                promo_ocr_amount = parsed.get("promotion", {}).get("amount", 0) or 0
-                parsed["claimed_total_discount"] = round(platform_ocr_total + promo_ocr_amount, 2)
-                parsed.setdefault("merchant_subsidies", [])
-                parsed.setdefault("merchant_coupons", [])
-                parsed.setdefault("shopping_funds", [])
-        except Exception as e:
-            parsed["needs"] = ["OCR失败：" + str(e)[:80]]
-        return i, parsed, path, ext
-
-    # 并发：4 个 worker 足够，再多反而被 OCR 模型加载/推理线程争抢
-    results = [None] * len(tasks)
-    with ThreadPoolExecutor(max_workers=4) as ex:
-        futures = {ex.submit(_ocr_one, i, f, path, ext): (i, path, ext) for i, f, path, ext in tasks}
-        for fut in as_completed(futures):
+        def _ocr_one(i, f, path, ext):
+            parsed = {"main_product": {"name": "", "spec": "", "raw": "", "ml": 0},
+                      "gifts": [], "promotion": {"type": "", "amount": 0.0, "condition": "", "raw": ""},
+                      "final_price": 0.0, "platform_coupons": [], "period_logo": "",
+                      "raw_text": "", "needs": [],
+                      "merchant_subsidies": [],
+                      "merchant_coupons": [],
+                      "shopping_funds": [],
+                      "claimed_total_discount": 0.0}
             try:
-                i, parsed, path, ext = fut.result(timeout=60)
+                with ocr_lock:  # rapidocr 非线程安全，必须串行调用
+                    res, _ = ocr(path)
+                if res:
+                    with ocr_lock:  # parse 也可能用临界资源
+                        parsed = parse_image_ocr(res)
+                    platform_ocr_total = sum(c.get("amount", 0) or 0 for c in parsed.get("platform_coupons", []))
+                    promo_ocr_amount = parsed.get("promotion", {}).get("amount", 0) or 0
+                    parsed["claimed_total_discount"] = round(platform_ocr_total + promo_ocr_amount, 2)
+                    parsed.setdefault("merchant_subsidies", [])
+                    parsed.setdefault("merchant_coupons", [])
+                    parsed.setdefault("shopping_funds", [])
             except Exception as e:
-                # 单独图片超时或失败 → 标记needs，不阻塞其他
-                i = futures[fut][0]
-                path = futures[fut][1]
-                ext = futures[fut][2]
-                parsed = {"main_product": {"name": "", "spec": "", "raw": "", "ml": 0},
-                          "gifts": [], "promotion": {"type": "", "amount": 0.0, "condition": "", "raw": ""},
-                          "final_price": 0.0, "platform_coupons": [], "period_logo": "",
-                          "raw_text": "", "needs": [f"OCR超时/失败：{str(e)[:60]}"],
-                          "merchant_subsidies": [], "merchant_coupons": [], "shopping_funds": [],
-                          "claimed_total_discount": 0.0}
-            results[i] = (parsed, path, ext)
+                parsed["needs"] = ["OCR识别失败：" + str(e)[:80]]
+            return i, parsed, path, ext
 
-    items = []
-    for i, (parsed, path, ext) in enumerate(results):
-        items.append({
-            "idx": i,
-            "name": names[i] if i < len(names) and names[i] else "",
-            "brand": brands[i] if i < len(brands) and brands[i] else "",
-            "date": dates[i] if i < len(dates) else "",
-            "image_path": path,
-            "image_url": f"/img/{i}.{ext.lstrip('.')}",
-            "parsed": parsed,
-        })
+        # 并发：max_workers=2（有锁时够了，主要是并行存文件+改格式）
+        results = [None] * len(tasks)
+        with ThreadPoolExecutor(max_workers=2) as ex:
+            futures = {ex.submit(_ocr_one, i, f, path, ext): (i, path, ext) for i, f, path, ext in tasks}
+            for fut in as_completed(futures):
+                try:
+                    i, parsed, path, ext = fut.result(timeout=120)
+                except Exception as e:
+                    i, _, path, ext = futures[fut]
+                    parsed = {"main_product": {"name": "", "spec": "", "raw": "", "ml": 0},
+                              "gifts": [], "promotion": {"type": "", "amount": 0.0, "condition": "", "raw": ""},
+                              "final_price": 0.0, "platform_coupons": [], "period_logo": "",
+                              "raw_text": "", "needs": [f"OCR超时：" + str(e)[:60]],
+                              "merchant_subsidies": [], "merchant_coupons": [], "shopping_funds": [],
+                              "claimed_total_discount": 0.0}
+                results[i] = (parsed, path, ext)
 
-    return jsonify({"ok": True, "tmpdir": tmpdir, "items": items})
+        items = []
+        for result in results:
+            if result is None:
+                continue  # skip failed tasks that didn't produce a result
+            parsed, path, ext = result
+            i = len(items)  # re-index sequentially
+            items.append({
+                "idx": i,
+                "name": names[i] if i < len(names) and names[i] else "",
+                "brand": brands[i] if i < len(brands) and brands[i] else "",
+                "date": dates[i] if i < len(dates) else "",
+                "image_path": path,
+                "image_url": f"/img/{i}.{ext.lstrip('.')}",
+                "parsed": parsed,
+            })
+
+        return jsonify({"ok": True, "tmpdir": tmpdir, "items": items})
+    except Exception as e:
+        # 确保任何异常都返回 JSON，不泄漏 HTML 到前端
+        return jsonify({"ok": False, "error": f"服务器错误：{str(e)[:200]}"}), 500
 
 
 @app.route("/img/<path:fn>")
