@@ -510,35 +510,65 @@ const ovMsg = document.getElementById("ovMsg");
 const ovSub = document.getElementById("ovSub");
 
 document.getElementById("runBtn").addEventListener("click", async () => {
-  const fd = new FormData();
-  let n = 0;
+  // 1. 收集所有图（带元数据）
+  const tasks = [];
   for (const b of state.batches) {
     for (const f of b.files) {
-      fd.append("images", f.file);
-      fd.append("dates", f.date);
-      fd.append("names", "");
-      fd.append("brands", f.brand || "");
-      n++;
+      tasks.push({ file: f.file, date: f.date, brand: f.brand || "" });
     }
   }
-  if (!n) return;
+  if (!tasks.length) return;
 
   overlay.classList.add("show");
-  ovMsg.textContent = "正在 OCR 识别 " + n + " 张图片…";
-  ovSub.textContent = "首次加载模型约 1-2 秒";
+  const allResults = [];
+
   try {
-    const res = await fetch("/api/extract", { method: "POST", body: fd });
-    const data = await res.json();
-    if (!data.ok) throw new Error(data.error || "识别失败");
-    state.results = data.items;
-    state.tmpdir = data.tmpdir;
-    // 确保新字段存在
-    for (const it of state.results) {
-      it.parsed.merchant_subsidies = it.parsed.merchant_subsidies || [];
-      it.parsed.merchant_coupons = it.parsed.merchant_coupons || [];
-      it.parsed.shopping_funds = it.parsed.shopping_funds || [];
-      it.parsed.claimed_total_discount = parseFloat(it.parsed.claimed_total_discount) || 0;
+    // 2. 逐张串行调用 /api/extract（云端 OCR 每张 ~30s，多图并发易触发 fetch 中断）
+    for (let i = 0; i < tasks.length; i++) {
+      const t = tasks[i];
+      const pct = Math.round((i / tasks.length) * 100);
+      ovMsg.textContent = `正在识别第 ${i + 1} / ${tasks.length} 张图…`;
+      ovSub.textContent = `已完成 ${pct}% · 单张约 30 秒，请耐心等待`;
+
+      // 3. 客户端预压缩（1280px / JPEG 0.85），大幅缩短上传耗时
+      const compressed = await compressImage(t.file, 1280, 0.85);
+
+      const fd = new FormData();
+      fd.append("images", compressed, t.file.name || "img.jpg");
+      fd.append("dates", t.date);
+      fd.append("names", "");
+      fd.append("brands", t.brand);
+
+      // 4. 单图调用：超时 180s（云端 ~30s，留足 buffer）
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 180000);
+      let res, data;
+      try {
+        res = await fetch("/api/extract", { method: "POST", body: fd, signal: ctrl.signal });
+        data = await res.json();
+      } finally {
+        clearTimeout(timer);
+      }
+      if (!data.ok) throw new Error(`第 ${i + 1} 张图：${data.error || "识别失败"}`);
+      if (data.items && data.items[0]) {
+        const it = data.items[0];
+        it.parsed.merchant_subsidies = it.parsed.merchant_subsidies || [];
+        it.parsed.merchant_coupons = it.parsed.merchant_coupons || [];
+        it.parsed.shopping_funds = it.parsed.shopping_funds || [];
+        it.parsed.claimed_total_discount = parseFloat(it.parsed.claimed_total_discount) || 0;
+        // 保留 batch 的元数据
+        it.date = t.date;
+        it.brand = t.brand;
+        allResults.push(it);
+      }
     }
+
+    state.results = allResults;
+    // 沿用第一张返回的 tmpdir（其它张图可能不同 tmpdir，但 build 用的是文件 path）
+    state.tmpdir = (allResults[0] && allResults[0].image_path) ? allResults[0].image_path.replace(/\/[^/]+$/, "") : "";
+    // 把所有图的文件路径带回（generate 需要）
+    state._image_paths = allResults.map(r => ({ path: r.image_path, url: r.image_url }));
+
     renderResults();
     document.getElementById("page1").classList.add("hidden");
     document.getElementById("page2").classList.remove("hidden");
@@ -547,9 +577,44 @@ document.getElementById("runBtn").addEventListener("click", async () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   } catch (err) {
     overlay.classList.remove("show");
-    toast("识别失败: " + err.message);
+    const msg = err.name === "AbortError"
+      ? "识别超时（单张超过 3 分钟），请尝试压缩图片或单张上传"
+      : ("识别失败: " + (err.message || err));
+    toast(msg);
   }
 });
+
+/* ============ 图片预压缩（Canvas）============ */
+async function compressImage(file, maxSize = 1280, quality = 0.85) {
+  // 非图片或已很小：直接返回
+  if (!file.type.startsWith("image/")) return file;
+  if (file.size < 300 * 1024) return file; // < 300KB 没必要再压
+
+  const img = await new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const im = new Image();
+    im.onload = () => { resolve(im); URL.revokeObjectURL(url); };
+    im.onerror = reject;
+    im.src = url;
+  });
+
+  let { width, height } = img;
+  const scale = Math.min(1, maxSize / Math.max(width, height));
+  width = Math.round(width * scale);
+  height = Math.round(height * scale);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, width, height);
+  ctx.drawImage(img, 0, 0, width, height);
+
+  const blob = await new Promise(res => canvas.toBlob(res, "image/jpeg", quality));
+  if (!blob) return file;
+  return new File([blob], (file.name || "img").replace(/\.[^.]+$/, "") + ".jpg", { type: "image/jpeg" });
+}
 
 /* ============ 校验计算 ============ */
 function computeItemSummary(it) {
