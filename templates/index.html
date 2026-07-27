@@ -132,6 +132,17 @@ main { max-width: 1080px; margin: 32px auto; padding: 0 20px 90px; }
 .benefit-edit .cb-label { font-size: 11px; color: var(--ink-3); white-space: nowrap; display: flex; align-items: center; gap: 2px; }
 .benefit-edit .cb-label input[type=checkbox] { margin: 0; flex: none; width: 14px; height: 14px; }
 
+/* 字段来源标签（三态，让用户清楚这是 OCR 识别还是待人工补） */
+.src-tag { display: inline-block; font-size: 10.5px; padding: 2px 7px;
+           border-radius: 999px; margin-left: 4px; vertical-align: middle;
+           white-space: nowrap; font-weight: 500; letter-spacing: 0.2px; }
+.src-tag.ocr-ok      { color: #1f7a3a; background: rgba(76, 175, 80, .14);
+                       border: 1px solid rgba(76, 175, 80, .35); }
+.src-tag.ocr-miss    { color: #b86a00; background: rgba(255, 152, 0, .12);
+                       border: 1px solid rgba(255, 152, 0, .32); }
+.src-tag.ocr-unsure  { color: #b25a00; background: rgba(255, 193, 7, .14);
+                       border: 1px solid rgba(255, 193, 7, .35); }
+
 /* 校验摘要卡（单图内联） */
 .item-summary { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12.5px;
                 padding: 10px 14px; background: rgba(255,255,255,.35); border-radius: 10px;
@@ -805,12 +816,40 @@ function renderResults() {
     // 计算小结
     const sum = computeItemSummary(it);
 
+    // ===== 来源标签工具 =====
+    // OCR 看到了图里的什么 → 显示「已识别 · OCR」；图里没印 → 显示「图里未印 · 需人工」；OCR 无法判断 → 「待确认」
+    const ocr_conf = (p.ocr_confidence || 0);
+    const tag = (cls, txt) => `<span class="src-tag ${cls}" title="${txt}">${txt}</span>`;
+    const OCR_OK = 'ocr-ok', OCR_MISS = 'ocr-miss', OCR_UNSURE = 'ocr-unsure';
+    function tagFor(fieldKey) {
+      // 字段级判断：根据 parsed 内容判断是否真的 OCR 出
+      switch (fieldKey) {
+        case 'main_name':    return p.main_product.name ? tag(OCR_OK, '已识别·OCR') : tag(OCR_MISS, '图里未印');
+        case 'main_spec':    return p.main_product.spec ? tag(OCR_OK, '已识别·OCR') : tag(OCR_MISS, '图里未印');
+        case 'gifts':        return p.gifts.length ? tag(OCR_OK, `已识别·OCR（${p.gifts.length}件）`) : tag(OCR_MISS, '图里未印/含UI噪声');
+        case 'period':       return p.period_logo ? tag(OCR_OK, '已识别·OCR') : tag(OCR_MISS, '图里未印');
+        case 'final_price':  return p.final_price > 0 ? tag(OCR_OK, '已识别·OCR') : tag(OCR_MISS, '图里未印·需人工');
+        case 'promo':        return p.promotion.type ? tag(OCR_OK, '已识别·OCR') : tag(OCR_MISS, '图里未印·查活动页');
+        case 'plat':         return (it.platform_coupons||[]).some(c => c.amount > 0)
+                                    ? tag(OCR_OK, '已识别·OCR')
+                                    : (it.platform_coupons||[]).length
+                                        ? tag(OCR_UNSURE, '已识别·券名/金额待补')
+                                        : tag(OCR_MISS, '图里未印/查平台');
+        case 'subsidies':    return (p.merchant_subsidies||[]).length ? tag(OCR_OK, '已识别·OCR') : tag(OCR_MISS, '图里未印/查店铺');
+        case 'mcoupons':     return (p.merchant_coupons||[]).length ? tag(OCR_OK, '已识别·OCR') : tag(OCR_MISS, '图里未印/查店铺');
+        case 'sfunds':       return (p.shopping_funds||[]).length ? tag(OCR_OK, '已识别·OCR') : tag(OCR_MISS, '图里未印');
+        case 'claimed':      return p.claimed_total_discount > 0 ? tag(OCR_OK, '已识别·OCR') : tag(OCR_MISS, '图里未印·查详情页');
+        case 'official':     return tag(OCR_MISS, 'OCR无法·查天猫');
+        default: return '';
+      }
+    }
+
     card.innerHTML = `
       <img src="${it.image_url}${it.tmpdir ? '?d='+it.tmpdir : ''}" alt="" onerror="this.style.opacity=.3" />
       <div class="r-meta">
         <div class="r-line">
           <label>日期</label>
-          <input type="date" data-k="date" data-i="${i}" value="${it.date || ''}" />
+          <input type="date" data-k="date" data-i="${i}" value="${(it.date||'').replace(/\//g,'-')}" />
         </div>
         <div class="r-line">
           <label>商品昵称</label>
@@ -821,21 +860,21 @@ function renderResults() {
           <input type="text" data-k="brand" data-i="${i}" placeholder="如：兰蔻 / 海蓝之谜（不同品牌自动分Sheet）" value="${it.brand || ''}" />
         </div>
         <div class="r-line">
-          <label>主品</label>
+          <label>主品 ${tagFor('main_name')}</label>
           <input type="text" data-k="main_name" data-i="${i}" value="${p.main_product.name || ''}" />
           <input type="text" data-k="main_spec" data-i="${i}" placeholder="规格" value="${p.main_product.spec || ''}" style="max-width:100px;" />
         </div>
         <div class="r-line">
-          <label>主品原价</label>
+          <label>主品原价 ${tagFor('official')}</label>
           <input type="number" data-k="official_price" data-i="${i}" placeholder="需电商搜索/手动填" value="${it.official_price || ''}" style="max-width:130px;" />
-          <span style="color:var(--ink-3); font-size:12px;">OCR 无法自动获取</span>
+          <span style="color:var(--ink-3); font-size:12px;">请到该品牌天猫官旗查正价（如「黑绷带[50]面霜50ml」）</span>
         </div>
         <div class="r-line">
-          <label>活动周期</label>
+          <label>活动周期 ${tagFor('period')}</label>
           <input type="text" data-k="period_logo" data-i="${i}" value="${(p.period_logo || '').slice(0,200)}" placeholder="logo + 活动期" />
         </div>
         <div class="r-line gifts-area">
-          <label style="align-self:flex-start;">赠品</label>
+          <label style="align-self:flex-start;">赠品 ${tagFor('gifts')}</label>
           <div style="flex:1">
             <div class="gh">${p.gifts.length} 件 · 可手动调整名称/ml/估值（建议补 ml × 正装单 ml 官方价）</div>
             <div data-gifts="${i}"></div>
@@ -845,19 +884,20 @@ function renderResults() {
           </div>
         </div>
         <div class="r-line">
-          <label>优惠</label>
+          <label>优惠 ${tagFor('promo')}</label>
           <input type="text" data-k="promo_type" data-i="${i}" placeholder="类型（直播间货补/限时直降…）" value="${p.promotion.type || ''}" style="max-width:200px;" />
-          <input type="number" data-k="promo_amount" data-i="${i}" placeholder="扣减金额（图片通常未印刷）" value="${p.promotion.amount || ''}" style="max-width:130px;" />
+          <input type="number" data-k="promo_amount" data-i="${i}" placeholder="扣减金额（图里未印时需人工补）" value="${p.promotion.amount || ''}" style="max-width:130px;" />
           <input type="text" data-k="promo_condition" data-i="${i}" placeholder="条件" value="${p.promotion.condition || ''}" />
         </div>
         <div class="r-line">
-          <label>到手价</label>
+          <label>到手价 ${tagFor('final_price')}</label>
           <input type="number" data-k="final_price" data-i="${i}" value="${p.final_price || ''}" style="max-width:130px;" />
+          <span style="color:var(--ink-3); font-size:12px;">图里未印到手价时，从店铺活动详情页查</span>
         </div>
 
         <!-- 商家货补 -->
         <div class="r-line gifts-area">
-          <label style="align-self:flex-start;">商家货补</label>
+          <label style="align-self:flex-start;">商家货补 ${tagFor('subsidies')}</label>
           <div style="flex:1">
             <div class="gh">直播间/自播间货补（多文案统一）。来源、是否计入折扣均可调。主图没写且未补 → 不导出</div>
             <div data-benefits="merchant_subsidies_${i}"></div>
@@ -868,7 +908,7 @@ function renderResults() {
         </div>
         <!-- 商家券 -->
         <div class="r-line gifts-area">
-          <label style="align-self:flex-start;">商家券</label>
+          <label style="align-self:flex-start;">商家券 ${tagFor('mcoupons')}</label>
           <div style="flex:1">
             <div class="gh">店铺券/会员券/直播券等，非平台券。来源、是否计入折扣均可调</div>
             <div data-benefits="merchant_coupons_${i}"></div>
@@ -879,7 +919,7 @@ function renderResults() {
         </div>
         <!-- 购物金/储值权益 -->
         <div class="r-line gifts-area">
-          <label style="align-self:flex-start;">购物金/储值</label>
+          <label style="align-self:flex-start;">购物金/储值 ${tagFor('sfunds')}</label>
           <div style="flex:1">
             <div class="gh">充值膨胀类权益（充500得550等），<b>仅展示，不计入折扣率</b>（规则10）</div>
             <div data-benefits="shopping_funds_${i}"></div>
@@ -891,14 +931,14 @@ function renderResults() {
 
         <!-- 主图宣称总减免 -->
         <div class="r-line">
-          <label>宣称总减免</label>
+          <label>宣称总减免 ${tagFor('claimed')}</label>
           <input type="number" data-k="claimed_total_discount" data-i="${i}" value="${p.claimed_total_discount || ''}" placeholder="OCR初值，可手动修正" style="max-width:150px;" step="0.01" />
           <span style="color:var(--ink-3); font-size:12px;">图里印的总优惠额（可修正）</span>
         </div>
 
         <!-- 平台券 -->
         <div class="r-line gifts-area">
-          <label style="align-self:flex-start;">平台券</label>
+          <label style="align-self:flex-start;">平台券 ${tagFor('plat')}</label>
           <div style="flex:1">
             <div class="gh">平台大促发放给消费者的券（88VIP/品类券/加补券/惊喜券），在商家到手价上再叠加一道折扣</div>
             <div data-pcoupons="${i}"></div>
@@ -921,9 +961,12 @@ function renderResults() {
         </div>
 
         ${p.needs?.length ? `<div class="needs">⚠️ 自动没识别到：${p.needs.join(" · ")} — 可在上方手动补</div>` : ""}
-        <details style="margin-top:4px;">
-          <summary style="cursor:pointer; color:var(--ink-3); font-size:12.5px;">查看 OCR 全文</summary>
-          <pre style="white-space:pre-wrap; font-size:12px; color:var(--ink-2); background: rgba(255,255,255,.4); padding:10px; border-radius:8px; margin:8px 0 0;">${(p.raw_text||'').replace(/[<>&]/g, c=>({"<":"&lt;",">":"&gt;","&":"&amp;"}[c]))}</pre>
+        <!-- OCR 全文：提上来到显眼位置，让用户能看到 OCR 看到了什么 -->
+        <details style="margin-top:8px;" open>
+          <summary style="cursor:pointer; color:var(--ink-3); font-size:13px; font-weight:600;">
+            📋 OCR 原始全文（点击折叠 / 展开）— 用来核对 OCR 看到了哪些文字
+          </summary>
+          <pre style="white-space:pre-wrap; font-size:12px; color:var(--ink-2); background: rgba(255,255,255,.5); padding:10px; border-radius:8px; margin:8px 0 0; max-height:200px; overflow:auto;">${(p.raw_text||'').replace(/[<>&]/g, c=>({"<":"&lt;",">":"&gt;","&":"&amp;"}[c]))}</pre>
         </details>
       </div>
     `;

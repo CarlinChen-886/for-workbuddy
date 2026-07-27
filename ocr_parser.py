@@ -222,29 +222,61 @@ def _get_gifts(blocks):
 
 
 def _get_promo_and_price(blocks, coupon_blocks):
-    """非平台券语境下的到手价 / 直降"""
+    """商家优惠 + 到手价。覆盖主图文案中的多种写法。
+
+    优先级（命中即采纳，避免互相覆盖）：
+    1) 「直播间到手价 ¥xxx / 到手价 ¥xxx / 直播间到手 ¥xxx」 → final = xxx，promo.type="直播间货补"
+    2) 「限时直降 ¥xxx / 直播间补贴 ¥xxx / 官方补贴 ¥xxx / 货补 ¥xxx / 立减 ¥xxx」 → promo.amount=xxx
+    3) 「直播间专享¥xxx / 直播间到手¥xxx」 → 视作 1)
+    """
     promo = {"type": "", "amount": 0.0, "condition": "", "raw": ""}
     final = 0.0
     coupon_set = set(id(b) for b in coupon_blocks)
+    # 让 "到手价" / "到手 ￥xxx" 也能匹配，提前把空格干连字符归一
+    price_re = re.compile(r'[¥￥]\s*(\d{2,6})')
+
     for box, text, _ in blocks:
         if id((box, text)) in coupon_set:
             continue
-        t = _norm(text)
-        if ("到手" in t) and re.search(r'[¥￥]\s*\d{3,5}', t):
-            m = re.search(r'[¥￥]\s*(\d{3,5})', t)
-            final = float(m.group(1))
-            promo["type"] = "直播间货补" if "直播" in t else "限时优惠"
-            promo["condition"] = text
-            promo["raw"] = text
-            break
-        elif "直降" in t:
+        t = _norm(_clean(text))
+        m_price = price_re.search(t)
+        price = float(m_price.group(1)) if m_price else None
+        # 排除把"¥1000"门槛误读成到手价：门槛通常前面有 "满"
+        is_threshold = bool(re.search(r'满[¥￥]?\s*' + (m_price.group(1) if m_price else '0'), t))
+
+        # 1) 到手价（直播间/到手价）
+        if re.search(r'(直播.{0,4})?到手价\s*[¥￥]?\s*\d', t) or re.search(r'(到手价|到手价[^\d]{0,4})[¥￥]?\s*\d', t):
+            if price and not is_threshold:
+                final = price
+                promo["type"] = "直播间货补" if "直播" in t else "限时优惠"
+                promo["condition"] = text
+                promo["raw"] = text
+                continue
+
+        # 2) 直降 / 货补 / 补贴 / 立减（不含 "券" —— 平台券已分到 _get_platform）
+        if re.search(r'(限时)?直降', t) and price and not is_threshold:
             promo["type"] = "限时直降"
+            promo["amount"] = price
             promo["condition"] = text
             promo["raw"] = text
-            m = re.search(r'[¥￥]\s*(\d{3,5})', t)
-            if m:
-                final = float(m.group(1))
-            break
+            final = final or price
+            continue
+        if re.search(r'货补|补贴', t) and price and not is_threshold and "券" not in t:
+            promo["type"] = "直播间货补" if "直播" in t else "商家补贴"
+            promo["amount"] = price
+            promo["condition"] = text
+            promo["raw"] = text
+            final = final or price
+            continue
+        # 3) 「直播间专享」「立减 ¥xxx / 立享立减」 等量级较低的优惠（单数字时）
+        if re.search(r'(立减|专享|补贴|优惠)\s*[¥￥]\s*\d{2,5}', t) and not is_threshold and "券" not in t:
+            if price and price >= 10:
+                promo["type"] = promo["type"] or "商家优惠"
+                promo["amount"] = (promo["amount"] or 0) + price
+                promo["condition"] = (promo["condition"] + " / " + text) if promo["condition"] else text
+                promo["raw"] = text
+                final = final or price
+                continue
     return promo, final
 
 
@@ -283,7 +315,14 @@ def _get_shopping_credits(blocks):
 
 
 def _get_platform(blocks):
-    """结合整图语境与券面金额，识别平台券及其合计关系。"""
+    """结合整图语境与券面金额，识别平台券及其合计关系。
+
+    覆盖 4 种语义：
+    (A) 明确券名+券面：美妆加补券¥100 + 88VIP消费券¥150 + 合计¥250
+    (B) 模糊券名（如「领券至高原价」） → 按合计金额构造成一张平台券
+    (C) 「下拉详情页领券立减 ¥xxx」「详情页领券 ¥xxx」 → ¥xxx 平台券
+    (D) 87VIP / 美妆加补券 / 平台消费券 / 跨店券 / 平台满减券 等名称命中
+    """
     cblocks = [b for b in blocks if _is_coupon_block(b[1])]
     full, platform_context = _coupon_scope(blocks)
     names = []
@@ -305,6 +344,25 @@ def _get_platform(blocks):
         ordered.append(n)
     names = list(reversed(ordered))
 
+    # 收集泛称金额：「下拉详情页领券立减 ¥xxx / 至高立减 ¥xxx / 合计立减 ¥xxx / 可领券立减 ¥xxx / 详情页领券立减 ¥xxx」
+    generic_amounts = []
+    generic_phrases = []
+    for b in cblocks:
+        t = _norm(_clean(b[1]))
+        # 匹配"领券立减 ¥xxx"、"详情页领券立减 ¥xxx"、"至高立减 ¥xxx"、"合计立减 ¥xxx"、"可领券 ¥xxx"
+        for pat in [
+            r'(?:下拉)?(?:详情页)?(?:可)?领券(?:至高|立减|至高原价)?[¥￥]\s*(\d{2,5})',
+            r'(?:至高|合计|可领)[¥￥]\s*(\d{2,5})',
+            r'领券(?:至高)?(?:立减|抵扣)?[¥￥]?\s*(\d{2,5})',
+            r'下拉详情页领券(?:立减|可领)[¥￥]?\s*(\d{2,5})',
+            r'详情页领券立减\s*[¥￥]?\s*(\d{2,5})\s*元?',
+        ]:
+            for mm in re.finditer(pat, t):
+                a = float(mm.group(1))
+                if 10 <= a <= 10000:   # 排除不合理的"¥3"、"¥999999"
+                    generic_amounts.append(a)
+                    generic_phrases.append(mm.group(0))
+
     total = None
     face_amounts = []
     for b in cblocks:
@@ -314,7 +372,6 @@ def _get_platform(blocks):
             total = float(m.group(1))
         for mm in re.finditer(r'[¥￥]\s*(\d{2,5})', t):
             amount = float(mm.group(1))
-            # 合计金额保留在 total，券面金额用于拆分；避免重复。
             if total is None or amount != total:
                 face_amounts.append(amount)
         for mm in re.finditer(r'享[¥￥]?\s*(\d{2,5})', t):
@@ -322,7 +379,7 @@ def _get_platform(blocks):
     face_amounts = list(dict.fromkeys(face_amounts))
 
     # 88VIP/美妆加补/超级88等强平台语境优先；明确店铺券等仍留给商家层。
-    if merchant_hits and not platform_context and not names:
+    if merchant_hits and not platform_context and not names and not generic_amounts:
         return [], None
 
     # 从整张图的空间关系读取券名附近券面金额：同一横向券卡内，金额块通常位于券名下方。
@@ -359,7 +416,7 @@ def _get_platform(blocks):
 
     out = []
     if names:
-        # 广告注释中泛称“惊喜券等”不作为当前画面实际券种；只保留有独立券卡/金额关系的名称。
+        # 广告注释中泛称"惊喜券等"不作为当前画面实际券种；只保留有独立券卡/金额关系的名称。
         if len(names) > 1:
             names = [n for n in names if n in spatial_amounts or "88vip" in n.lower() or "美妆加补" in n]
         split_map = dict(spatial_amounts)
@@ -392,6 +449,31 @@ def _get_platform(blocks):
             for n in names:
                 out.append({"name": n + "（平台券）", "amount": 0.0,
                             "condition": "平台大促发放，金额待确认", "raw": ""})
+
+    # 兜底 1：泛称金额（如「下拉详情页领券立减 ¥426」）—— 一张平台券
+    if not out and generic_amounts:
+        # 取最大且唯一的那一个金额；多个时按金额分组取最高
+        amt = max(set(generic_amounts), key=generic_amounts.count)
+        if generic_amounts.count(amt) >= 1:
+            phrase = next((p for p in generic_phrases if str(int(amt)) in p), generic_phrases[0] if generic_phrases else "领券立减")
+            out.append({
+                "name": "平台大促券（泛称）",
+                "amount": amt,
+                "condition": f"图内泛称：{phrase}；归到平台层（商家层不重复计算）",
+                "raw": phrase,
+                "source": "OCR",
+            })
+
+    # 兜底 2：total 有金额但 names 为空（极少数情况：合计立减xxx元）
+    if not out and total:
+        out.append({
+            "name": "平台券（合计）",
+            "amount": total,
+            "condition": f"图内合计立减¥{total:g}，未识别出具体券名",
+            "raw": " | ".join(_clean(b[1]) for b in cblocks),
+            "source": "OCR",
+        })
+
     return out, total
 
 
@@ -436,6 +518,48 @@ def parse_image_ocr(blocks):
     shopping_credits = _get_shopping_credits(sorted_blocks)
     period_logo = _get_period_logo(sorted_blocks)
 
+    # ===== 拆三层权益 =====
+    # 商家货补（merchant_subsidies）：从 OCR 已知信息里识别"直播间补贴/官方补贴/直降/主播立减"等
+    merchant_subsidies = []
+    if promo.get("type") and promo.get("amount", 0) > 0:
+        merchant_subsidies.append({
+            "name": promo["type"],
+            "amount": float(promo["amount"]),
+            "threshold": "",
+            "source": "OCR",
+            "count_toward_discount": True,
+            "note": promo.get("condition", "") or "主图识别的商家直降/货补/补贴",
+        })
+    # 同时扫所有 block，把 "店铺券 ¥xxx / 会员券 ¥xxx" 等归 merchant_coupons
+    merchant_coupons = []
+    for b in sorted_blocks:
+        t = _norm(_clean(b[1]))
+        for kw in MERCHANT_COUPON_NAMES:
+            if kw in t:
+                amt = _coupon_amount_from_text(t)
+                if amt:
+                    merchant_coupons.append({
+                        "name": kw + "（商家券）",
+                        "amount": float(amt),
+                        "threshold": t,
+                        "source": "OCR",
+                        "count_toward_discount": True,
+                        "note": "图内出现的商家券/会员券/店铺券",
+                    })
+                    break
+    # 购物金 / 储值权益（shopping_funds）— 规则 10：默认不计入折扣
+    shopping_funds = []
+    if shopping_credits:
+        sc = shopping_credits
+        shopping_funds.append({
+            "name": sc.get("type", "购物金") + "（储值权益）",
+            "amount": float(sc.get("amount") or 0),
+            "threshold": sc.get("condition", ""),
+            "source": "OCR",
+            "count_toward_discount": False,
+            "note": sc.get("note", "默认不计入折扣（规则 10）"),
+        })
+
     needs = []
     if not main["name"]:
         needs.append("主品")
@@ -463,9 +587,15 @@ def parse_image_ocr(blocks):
         "final_price": final_price,
         "platform_coupons": platform_coupons,
         "shopping_credits": shopping_credits,
+        # 三层权益（拆分自 shopping_credits / promo / merchant_coupon 关键词）
+        "merchant_subsidies": merchant_subsidies,
+        "merchant_coupons": merchant_coupons,
+        "shopping_funds": shopping_funds,
+        "claimed_total_discount": sum((c.get("amount", 0) for c in platform_coupons), 0.0) + (promo.get("amount") or 0.0),
         "period_logo": period_logo,
         "raw_text": raw_text,
         "needs": needs,
+        "ocr_confidence": 0.6,
     }
 
 
